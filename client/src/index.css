@@ -114,3 +114,40 @@ label { display: block; font-size: 11px; font-weight: 600; color: #676265; margi
 
 .client-register-button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--coral); font-size: 11px; font-weight: 700; padding: 0; margin-top: 9px; }
 .client-register-button:hover { color: var(--coral-dark); }
+
+/* iPhone-style client kiosk refinements */
+.client-screen { background: #f7f7f5; }
+.client-card { width: min(100%, 430px); padding: 42px 34px 30px; border: 1px solid rgba(20,20,20,.08); border-radius: 28px; box-shadow: 0 28px 80px rgba(30,25,20,.09); }
+.client-brand { top: 27px; left: 31px; font-size: 17px; }
+.client-icon { width: 50px; height: 50px; border-radius: 16px; margin-bottom: 18px; }
+.client-card h1 { font-size: 43px; letter-spacing: -.065em; margin-top: 11px; }
+.client-card p { font-size: 13px; max-width: 290px; margin-bottom: 24px; }
+.client-form input { height: 54px; border-radius: 14px; font-size: 17px; border-color: #dededb; background: #fbfbfa; }
+.client-primary-button { height: 52px; border-radius: 14px; background: #1f1f22; box-shadow: none; }
+.client-primary-button:hover { background: #37373a; box-shadow: 0 8px 18px rgba(30,30,32,.13); }
+.client-not-found { display: grid; grid-template-columns: 36px 1fr; gap: 10px; align-items: start; padding: 13px; margin-top: 15px; border: 1px solid #eadfd1; border-radius: 15px; background: #fffaf3; text-align: left; }
+.not-found-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: #f7e4d1; color: #bd7944; }
+.not-found-copy { min-width: 0; }
+.not-found-copy strong, .not-found-copy span { display: block; }
+.not-found-copy strong { color: #514b46; font-size: 12px; }
+.not-found-copy span { color: #9a8d81; font-size: 10px; line-height: 1.4; margin-top: 3px; }
+.client-register-button { grid-column: 2; justify-content: space-between; width: 100%; height: 35px; margin-top: 1px; padding: 0 10px; border: 1px solid #edcbb0; border-radius: 9px; background: #fff3e7; color: #a96232; font-size: 10px; }
+.client-register-button:hover { background: #ffe9d7; color: #8c4b25; }
+.client-privacy { margin-top: 19px; font-size: 9px; color: #aaa7a2; }
+.client-card-register { padding-top: 30px; }
+.client-step-header { min-height: 16px; }
+.client-progress-bar { height: 3px; margin: 16px 0 22px; background: #e9e9e6; }
+.client-progress-bar span { background: #222225; }
+.client-back { color: #8f8c88; font-size: 10px; }
+.client-back:hover { color: #222225; }
+.apple-calendar { padding: 13px 12px 12px; border: 1px solid #e2e2df; background: #fbfbfa; border-radius: 17px; text-align: center; }
+.calendar-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.calendar-toolbar strong { font-size: 13px; letter-spacing: -.02em; }
+.calendar-toolbar button { width: 27px; height: 27px; display: grid; place-items: center; border: 0; border-radius: 8px; background: #f0f0ee; color: #5b5a58; }
+.calendar-toolbar button:disabled { opacity: .35; cursor: default; }
+.calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.calendar-weekdays { margin-bottom: 5px; }.calendar-weekdays span { color: #aaa8a4; font-size: 9px; font-weight: 600; }
+.calendar-grid button, .calendar-grid span { aspect-ratio: 1; display: grid; place-items: center; min-height: 29px; border: 0; border-radius: 50%; background: transparent; color: #333235; font-size: 11px; }
+.calendar-grid button:hover { background: #ededeb; }.calendar-grid button.selected-day { background: #1f1f22; color: white; box-shadow: 0 3px 8px rgba(20,20,20,.16); }
+.calendar-selection { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; margin-top: 11px; border-top: 1px solid #ecece9; padding-top: 10px; color: #999691; font-size: 10px; }.calendar-selection svg { color: var(--coral); }
+@media (max-width: 470px) { .client-card { padding: 34px 22px 26px; border-radius: 24px; }.client-card h1 { font-size: 38px; }.client-brand { top: 21px; left: 20px; }.calendar-grid button, .calendar-grid span { min-height: 27px; } }
