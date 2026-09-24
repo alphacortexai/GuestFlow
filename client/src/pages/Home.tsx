@@ -11,6 +11,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { Link } from "wouter";
 
 type Client = {
   id: string;
@@ -164,7 +165,7 @@ export default function Home() {
           <div className="brand-mark"><Sparkles size={18} strokeWidth={2.5} /></div>
           <div><div className="brand-name">guestflow</div><div className="brand-caption">your welcome desk, simplified</div></div>
         </div>
-        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span></div>
+        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href="/welcome">Client screen ↗</Link></div>
       </header>
 
       <section className="hero container">
@@ -218,4 +219,3 @@ export default function Home() {
     </main>
   );
 }
-
