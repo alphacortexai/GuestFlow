@@ -111,3 +111,6 @@ label { display: block; font-size: 11px; font-weight: 600; color: #676265; margi
 .client-progress-bar span { display: block; height: 100%; background: var(--coral); border-radius: inherit; transition: width .22s cubic-bezier(.23,1,.32,1); }
 .client-flow-step > .client-icon { margin-bottom: 17px; }
 @media (max-width: 470px) { .client-card-start { padding-left: 22px; padding-right: 22px; } }
+
+.client-register-button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--coral); font-size: 11px; font-weight: 700; padding: 0; margin-top: 9px; }
+.client-register-button:hover { color: var(--coral-dark); }
