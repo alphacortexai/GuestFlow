@@ -31,6 +31,19 @@ export default function ClientWelcome() {
     return () => { document.title = "GuestFlow · Digital Registration Book"; };
   }, []);
 
+  useEffect(() => {
+    if (mode !== "success") return;
+    const timer = window.setTimeout(() => {
+      setMode("check-in");
+      setRegisterStep(1);
+      setPhone("");
+      setRegistration({ name: "", day: "", month: "", phone: "" });
+      setNotFound(false);
+      setClientName("");
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [mode]);
+
   const saveVisit = (client: Client) => {
     const visits = readStorage<Visit[]>(VISITS_KEY, []);
     const visit: Visit = { id: crypto.randomUUID(), clientId: client.id, checkedInAt: new Date().toISOString() };
@@ -70,7 +83,7 @@ export default function ClientWelcome() {
       <div className="client-brand"><span className="brand-mark"><Sparkles size={17} /></span><span>guestflow</span></div>
       <section className={`client-card ${mode === "register" ? "client-card-register" : ""}`}>
         {mode === "success" ? (
-          <div className="client-success"><div className="success-mark"><Check size={29} /></div><span className="client-eyebrow">YOU’RE ALL SET</span><h1>Welcome, <em>{clientName.split(" ")[0]}.</em></h1><p>Your visit has been recorded. Please take a seat and we’ll be with you shortly.</p><button className="client-secondary-button" type="button" onClick={reset}><RotateCcw size={16} /> Check in another person</button></div>
+          <div className="client-success"><div className="success-mark"><Check size={29} /></div><span className="client-eyebrow">YOU’RE ALL SET</span><h1>Welcome, <em>{clientName.split(" ")[0]}.</em></h1><p>Your visit has been recorded. Please take a seat and we’ll be with you shortly.</p></div>
         ) : mode === "check-in" ? (
           <div className="client-flow-step"><div className="client-icon"><Phone size={23} /></div><span className="client-eyebrow">SOOTHING SPA</span><h1>Welcome to<br /><em>Soothing Spa.</em></h1><p>Please check in below so we know you’re here.</p><form onSubmit={checkIn} className="client-form"><label htmlFor="client-phone">Phone number</label><input id="client-phone" inputMode="tel" autoComplete="tel" autoFocus placeholder="(555) 000-0000" value={phone} onChange={(event) => { setPhone(event.target.value); setNotFound(false); }} /><button className="client-primary-button" type="submit"><span>Please check in</span><ArrowRight size={18} /></button></form>{notFound && <div className="client-not-found"><strong>We couldn’t find that number.</strong><span>Are you visiting us for the first time?</span><button className="client-register-button" type="button" onClick={() => { setRegistration((current) => ({ ...current, phone })); setMode("register"); setRegisterStep(1); }}>Register as a new client <ArrowRight size={15} /></button></div>}<div className="client-privacy">Your number is used only to find your client record.</div></div>
         ) : (
