@@ -54,6 +54,7 @@ const formatPhone = (phone: string) => {
 };
 const formatTime = (iso: string) =>
   new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+const isSameDay = (first: Date, second = new Date()) => first.toDateString() === second.toDateString();
 const todayLabel = new Intl.DateTimeFormat("en", {
   weekday: "long",
   month: "long",
@@ -121,6 +122,13 @@ export default function Home() {
   };
 
   const checkIn = (client: Client) => {
+    if (todayVisits.some((visit) => visit.clientId === client.id)) {
+      setNotice({ title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." });
+      setPhone("");
+      setLookupState("idle");
+      setActiveClient(null);
+      return;
+    }
     const visit: Visit = { id: crypto.randomUUID(), clientId: client.id, checkedInAt: new Date().toISOString() };
     setVisits((current) => [visit, ...current]);
     setNotice({ title: `${client.name} is checked in`, detail: "Their visit has been added to today’s register." });
@@ -149,6 +157,12 @@ export default function Home() {
       createdAt: new Date().toISOString(),
     };
     if (!existing) setClients((current) => [client, ...current]);
+    if (todayVisits.some((visit) => visit.clientId === client.id)) {
+      setNotice({ title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." });
+      setRegistration({ name: "", day: "", month: "", phone: "" });
+      setShowRegistration(false);
+      return;
+    }
     const visit: Visit = { id: crypto.randomUUID(), clientId: client.id, checkedInAt: new Date().toISOString() };
     setVisits((current) => [visit, ...current]);
     setNotice({ title: existing ? `${client.name} is checked in` : "New client registered", detail: "They have also been signed in for today." });
@@ -191,7 +205,7 @@ export default function Home() {
               <button className="primary-button full" type="button" onClick={findClient}><span>Check phone number</span><ArrowRight size={18} /></button>
             </div>
             {lookupState === "found" && activeClient && <div className="result-card found-card"><div className="avatar avatar-coral">{activeClient.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="result-copy"><span className="result-label"><span className="result-dot" /> Client found</span><strong>{activeClient.name}</strong><span>{formatPhone(activeClient.phone)} <span className="middot">•</span> {activeClient.day} {activeClient.month}</span></div><button className="checkin-button" type="button" onClick={() => checkIn(activeClient)}><Check size={17} /> Sign in</button></div>}
-            {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><span className="result-label warm">No record yet</span><strong>Let’s add them to the book.</strong><span>You can register their name, birthday and phone.</span></div><button className="text-button" type="button" onClick={openRegistration}>Register <ArrowRight size={16} /></button></div>}
+            {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><span className="result-label warm">No record found</span><strong>New here? Create their record.</strong><span>Name, birthday and phone — just the essentials.</span></div><button className="text-button" type="button" onClick={openRegistration}>Create record <ArrowRight size={16} /></button></div>}
           </div>
 
           <div className="tip-card"><div className="tip-icon"><ShieldCheck size={19} /></div><div><strong>Privacy, by default</strong><p>Only the details needed for a quick welcome are collected. Birth year is intentionally left out.</p></div></div>
@@ -212,7 +226,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="activity-section container"><div className="activity-heading"><div><span className="section-kicker">LIVE REGISTER</span><h2>Today’s activity <span className="activity-count">{todayVisits.length}</span></h2></div><div className="activity-search"><Search size={17} /><input placeholder="Search by name or phone" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div><div className="activity-list">{activity.length > 0 ? activity.map(({ visit, client }) => client && <div className="activity-row" key={visit.id}><div className="avatar avatar-lilac">{client.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="activity-person"><strong>{client.name}</strong><span>{formatPhone(client.phone)}</span></div><div className="activity-birthday"><span>Birthday</span><strong>{client.day} {client.month}</strong></div><div className="activity-time"><Clock3 size={16} /> {formatTime(visit.checkedInAt)}</div><span className="signed-pill"><Check size={13} /> Signed in</span></div>) : <div className="empty-activity"><div className="empty-icon"><Clock3 size={20} /></div><div><strong>No visits recorded yet today</strong><span>Check in your first client above and their visit will appear here.</span></div></div>}</div></section>
+      <section className="activity-section container"><div className="activity-heading"><div><span className="section-kicker">LIVE REGISTER</span><h2>Today’s activity <span className="activity-count">{todayVisits.length}</span></h2></div><div className="activity-search"><Search size={17} /><input placeholder="Search name or phone" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div><div className="activity-list">{activity.length > 0 ? activity.map(({ visit, client }) => { if (!client) return null; const newToday = isSameDay(new Date(client.createdAt)); return <div className="activity-row" key={visit.id}><div className="avatar avatar-lilac">{client.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="activity-person"><strong>{client.name}</strong><span>{formatPhone(client.phone)}</span></div><div className="activity-birthday"><span>Birthday</span><strong>{client.day} {client.month}</strong></div><div className="activity-time"><Clock3 size={16} /> {formatTime(visit.checkedInAt)}</div><span className={`signed-pill ${newToday ? "new-today-pill" : ""}`}><Check size={13} /> {newToday ? "New today" : "Returning"}</span></div>; }) : <div className="empty-activity"><div className="empty-icon"><Clock3 size={20} /></div><div><strong>No visits recorded yet today</strong><span>Check in your first client above and their visit will appear here.</span></div></div>}</div></section>
 
       <footer className="footer container"><span>guestflow <i>•</i> a calmer way to welcome people</span><span>Tablet mode <span className="toggle-on"><span /></span></span></footer>
       {notice && <div className="toast"><div className="toast-check"><Check size={17} /></div><div><strong>{notice.title}</strong><span>{notice.detail}</span></div><button type="button" aria-label="Dismiss notification" onClick={() => setNotice(null)}><X size={16} /></button></div>}

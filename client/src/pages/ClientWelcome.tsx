@@ -47,7 +47,7 @@ export default function ClientWelcome() {
       setMode("check-in"); setRegisterStep(1); setPhone("");
       setRegistration({ name: "", day: "", month: "", phone: "" });
       setNotFound(false); setClientName(""); setAlreadyCheckedIn(false);
-    }, 4000);
+    }, 5000);
     return () => window.clearTimeout(timer);
   }, [mode]);
 
