@@ -9,6 +9,7 @@ const VISITS_KEY = "guestflow-visits";
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const weekdayNames = ["S", "M", "T", "W", "T", "F", "S"];
 const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+const localDayKey = (date = new Date()) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
 function readStorage<T>(key: string, fallback: T): T {
   try {
@@ -25,8 +26,10 @@ export default function ClientWelcome() {
   const [phone, setPhone] = useState("");
   const [registration, setRegistration] = useState({ name: "", day: "", month: "", phone: "" });
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
+  const [calendarView, setCalendarView] = useState<"month" | "day">("month");
   const [notFound, setNotFound] = useState(false);
   const [clientName, setClientName] = useState("");
+  const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const daysInMonth = new Date(currentYear, calendarMonth + 1, 0).getDate();
@@ -43,16 +46,21 @@ export default function ClientWelcome() {
     const timer = window.setTimeout(() => {
       setMode("check-in"); setRegisterStep(1); setPhone("");
       setRegistration({ name: "", day: "", month: "", phone: "" });
-      setNotFound(false); setClientName("");
-    }, 3000);
+      setNotFound(false); setClientName(""); setAlreadyCheckedIn(false);
+    }, 4000);
     return () => window.clearTimeout(timer);
   }, [mode]);
 
   const saveVisit = (client: Client) => {
     const visits = readStorage<Visit[]>(VISITS_KEY, []);
-    const visit: Visit = { id: crypto.randomUUID(), clientId: client.id, checkedInAt: new Date().toISOString() };
-    window.localStorage.setItem(VISITS_KEY, JSON.stringify([visit, ...visits]));
-    setClientName(client.name); setMode("success");
+    const checkedInToday = visits.some((visit) => visit.clientId === client.id && localDayKey(new Date(visit.checkedInAt)) === localDayKey());
+    setClientName(client.name);
+    setAlreadyCheckedIn(checkedInToday);
+    if (!checkedInToday) {
+      const visit: Visit = { id: crypto.randomUUID(), clientId: client.id, checkedInAt: new Date().toISOString() };
+      window.localStorage.setItem(VISITS_KEY, JSON.stringify([visit, ...visits]));
+    }
+    setMode("success");
   };
 
   const checkIn = (event: React.FormEvent) => {
@@ -75,9 +83,10 @@ export default function ClientWelcome() {
     saveVisit(client);
   };
 
-  const reset = () => { setMode("check-in"); setRegisterStep(1); setPhone(""); setRegistration({ name: "", day: "", month: "", phone: "" }); setNotFound(false); setClientName(""); };
+  const reset = () => { setMode("check-in"); setRegisterStep(1); setPhone(""); setRegistration({ name: "", day: "", month: "", phone: "" }); setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); };
   const goBack = () => { if (mode === "register" && registerStep > 1) setRegisterStep((step) => step - 1); else setMode("check-in"); };
   const chooseDate = (day: number) => setRegistration((current) => ({ ...current, day: String(day), month: monthNames[calendarMonth] }));
+  const chooseMonth = (month: number) => { setCalendarMonth(month); setCalendarView("day"); };
   const registrationNext = (event: React.FormEvent) => {
     event.preventDefault();
     if (registerStep === 1 && registration.name.trim()) setRegisterStep(2);
@@ -91,11 +100,11 @@ export default function ClientWelcome() {
       <div className="client-brand"><span className="brand-mark"><Sparkles size={16} /></span><span>guestflow</span></div>
       <section className={`client-card ${mode === "register" ? "client-card-register" : ""}`}>
         {mode === "success" ? (
-          <div className="client-success"><div className="success-mark"><Check size={28} /></div><span className="client-eyebrow">YOU’RE ALL SET</span><h1>Welcome, <em>{clientName.split(" ")[0]}.</em></h1><p>Your visit has been recorded. Please take a seat and we’ll be with you shortly.</p></div>
+          <div className="client-success"><div className="success-mark"><Check size={28} /></div><span className="client-eyebrow">{alreadyCheckedIn ? "ALREADY CHECKED IN" : "YOU’RE ALL SET"}</span><h1>{alreadyCheckedIn ? <>You’re already<br /><em>checked in.</em></> : <>Welcome, <em>{clientName.split(" ")[0]}.</em></>}</h1><p>{alreadyCheckedIn ? "This visit was already recorded today. Please take a seat and we’ll be with you shortly." : "Your visit has been recorded. Please take a seat and we’ll be with you shortly."}</p></div>
         ) : mode === "check-in" ? (
           <div className="client-flow-step"><h1>Digital<br /><em>Registration Book</em></h1><p>Please check in below so we know you’re here.</p><form onSubmit={checkIn} className="client-form"><label htmlFor="client-phone">Phone number</label><input id="client-phone" inputMode="tel" autoComplete="tel" autoFocus placeholder="(555) 000-0000" value={phone} onChange={(event) => { setPhone(event.target.value); setNotFound(false); }} /><button className="client-primary-button" type="submit"><span>Please check in</span><ArrowRight size={17} /></button></form>{notFound && <div className="client-not-found"><div className="not-found-icon"><UserPlus size={18} /></div><div className="not-found-copy"><strong>We don’t see you yet</strong><span>New to Soothing Spa? Create your client record in a few quick steps.</span></div><button className="client-register-button" type="button" onClick={() => { setRegistration((current) => ({ ...current, phone })); setMode("register"); setRegisterStep(1); }}><span>Register as a new client</span><ArrowRight size={15} /></button></div>}<div className="client-privacy">Your number is used only to find your client record.</div></div>
         ) : (
-          <div className="client-flow-step"><div className="client-step-header"><button className="client-back" type="button" onClick={goBack}><ArrowLeft size={14} /> Back</button><span className="client-progress">{registerStep} <i>/</i> 3</span></div><div className="client-progress-bar"><span style={{ width: `${(registerStep / 3) * 100}%` }} /></div><div className="client-icon"><UserPlus size={21} /></div><span className="client-eyebrow">NEW CLIENT</span><h1>{registerStep === 1 ? <>What’s your<br /><em>name?</em></> : registerStep === 2 ? <>When’s your<br /><em>birthday?</em></> : <>What’s your<br /><em>phone number?</em></>}</h1><p>{registerStep === 1 ? "Let’s start with the basics." : registerStep === 2 ? "Day and month only — no birth year needed." : "We’ll use this to make your next visit quick."}</p><form onSubmit={registrationNext} className="client-form client-registration-form">{registerStep === 1 && <><label htmlFor="client-name">Full name</label><input id="client-name" autoFocus placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></>}{registerStep === 2 && <div className="apple-calendar"><div className="calendar-toolbar"><button type="button" aria-label="Previous month" onClick={() => setCalendarMonth((month) => Math.max(0, month - 1))} disabled={calendarMonth === 0}><ChevronLeft size={17} /></button><strong>{monthNames[calendarMonth]}</strong><button type="button" aria-label="Next month" onClick={() => setCalendarMonth((month) => Math.min(11, month + 1))} disabled={calendarMonth === 11}><ChevronRight size={17} /></button></div><div className="calendar-weekdays">{weekdayNames.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button type="button" key={day} className={registration.day === String(day) && registration.month === monthNames[calendarMonth] ? "selected-day" : ""} onClick={() => chooseDate(day)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-selection"><CalendarDays size={15} /><span>{registration.day && registration.month ? `${registration.day} ${registration.month}` : "Select your birthday"}</span></div></div>}{registerStep === 3 && <><label htmlFor="client-new-phone">Phone number</label><input id="client-new-phone" inputMode="tel" autoComplete="tel" autoFocus placeholder="(555) 000-0000" value={registration.phone} onChange={(event) => setRegistration({ ...registration, phone: event.target.value })} required /></>}<button className="client-primary-button" type="submit"><span>{registerStep === 3 ? "Register & check in" : "Continue"}</span><ArrowRight size={17} /></button></form><div className="client-privacy">Your details are used only for your client record.</div></div>
+          <div className="client-flow-step"><div className="client-step-header"><button className="client-back" type="button" onClick={goBack}><ArrowLeft size={14} /> Back</button><span className="client-progress">{registerStep} <i>/</i> 3</span></div><div className="client-progress-bar"><span style={{ width: `${(registerStep / 3) * 100}%` }} /></div><div className="client-icon"><UserPlus size={21} /></div><span className="client-eyebrow">NEW CLIENT</span><h1>{registerStep === 1 ? <>What’s your<br /><em>name?</em></> : registerStep === 2 ? <>When’s your<br /><em>birthday?</em></> : <>What’s your<br /><em>phone number?</em></>}</h1><p>{registerStep === 1 ? "Let’s start with the basics." : registerStep === 2 ? "Choose a month, then select a day." : "We’ll use this to make your next visit quick."}</p><form onSubmit={registrationNext} className="client-form client-registration-form">{registerStep === 1 && <><label htmlFor="client-name">Full name</label><input id="client-name" autoFocus placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></>}{registerStep === 2 && <div className="apple-calendar">{calendarView === "month" ? <><div className="calendar-picker-heading"><CalendarDays size={15} /><strong>Select a month</strong></div><div className="month-grid">{monthNames.map((month, index) => <button type="button" key={month} className={registration.month === month ? "selected-month" : ""} onClick={() => chooseMonth(index)}>{month.slice(0, 3)}</button>)}</div></> : <><div className="calendar-toolbar"><button type="button" aria-label="Choose another month" onClick={() => setCalendarView("month")}><ChevronLeft size={17} /></button><strong>{monthNames[calendarMonth]}</strong><button type="button" aria-label="Next month" onClick={() => setCalendarMonth((month) => Math.min(11, month + 1))} disabled={calendarMonth === 11}><ChevronRight size={17} /></button></div><div className="calendar-weekdays">{weekdayNames.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button type="button" key={day} className={registration.day === String(day) && registration.month === monthNames[calendarMonth] ? "selected-day" : ""} onClick={() => chooseDate(day)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-selection"><CalendarDays size={15} /><span>{registration.day && registration.month ? `${registration.day} ${registration.month}` : "Select your birthday"}</span></div></>}</div>}{registerStep === 3 && <><label htmlFor="client-new-phone">Phone number</label><input id="client-new-phone" inputMode="tel" autoComplete="tel" autoFocus placeholder="(555) 000-0000" value={registration.phone} onChange={(event) => setRegistration({ ...registration, phone: event.target.value })} required /></>}<button className="client-primary-button" type="submit"><span>{registerStep === 3 ? "Register & check in" : "Continue"}</span><ArrowRight size={17} /></button></form><div className="client-privacy">Your details are used only for your client record.</div></div>
         )}
       </section>
       <div className="client-footer">A simple welcome, made easier.</div>
