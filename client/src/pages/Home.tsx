@@ -45,11 +45,15 @@ const monthOptions = [
   "December",
 ];
 
-const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+const normalizePhone = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("00")) return digits.slice(2);
+  if (digits.startsWith("0")) return `256${digits.slice(1)}`;
+  return digits;
+};
 const formatPhone = (phone: string) => {
   const digits = normalizePhone(phone);
-  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  if (digits.length === 12 && digits.startsWith("256")) return `+256 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
   return phone;
 };
 const formatTime = (iso: string) =>
@@ -214,7 +218,7 @@ export default function Home() {
             <p className="panel-description">Enter the phone number from their client record to sign them in.</p>
             <div className="phone-entry">
               <label htmlFor="phone">Phone number</label>
-              <div className={`phone-input-wrap ${lookupState}`}><Search size={22} /><input id="phone" inputMode="tel" autoComplete="tel" placeholder="(555) 000-0000" value={phone} onChange={(event) => { setPhone(event.target.value); setLookupState("idle"); }} onKeyDown={(event) => event.key === "Enter" && findClient()} /><button className="clear-button" type="button" aria-label="Clear phone number" onClick={() => { setPhone(""); setLookupState("idle"); }}>{phone && <X size={18} />}</button></div>
+              <div className={`phone-input-wrap ${lookupState}`}><Search size={22} /><input id="phone" inputMode="tel" autoComplete="tel" placeholder="+256 7XX XXX XXX" value={phone} onChange={(event) => { setPhone(event.target.value); setLookupState("idle"); }} onKeyDown={(event) => event.key === "Enter" && findClient()} /><button className="clear-button" type="button" aria-label="Clear phone number" onClick={() => { setPhone(""); setLookupState("idle"); }}>{phone && <X size={18} />}</button></div>
               <button className="primary-button full" type="button" onClick={findClient}><span>Check phone number</span><ArrowRight size={18} /></button>
             </div>
             {lookupState === "found" && activeClient && <div className="result-card found-card"><div className="avatar avatar-coral">{activeClient.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="result-copy"><span className="result-label"><span className="result-dot" /> Client found</span><strong>{activeClient.name}</strong><span>{formatPhone(activeClient.phone)} <span className="middot">•</span> {activeClient.day} {activeClient.month}</span></div><button className="checkin-button" type="button" onClick={() => checkIn(activeClient)}><Check size={17} /> Sign in</button></div>}
@@ -231,7 +235,7 @@ export default function Home() {
             <form onSubmit={registerClient} className="registration-form">
               <div className="field full-field"><label htmlFor="name">Full name</label><input id="name" placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></div>
               <div className="field-group"><div className="field"><label htmlFor="day">Birthday · day</label><div className="select-wrap"><select id="day" value={registration.day} onChange={(event) => setRegistration({ ...registration, day: event.target.value })} required><option value="">Day</option>{Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}</option>)}</select><ChevronDown size={17} /></div></div><div className="field"><label htmlFor="month">Month</label><div className="select-wrap"><select id="month" value={registration.month} onChange={(event) => setRegistration({ ...registration, month: event.target.value })} required><option value="">Month</option>{monthOptions.map((month) => <option key={month} value={month}>{month}</option>)}</select><ChevronDown size={17} /></div></div></div>
-              <div className="field full-field"><label htmlFor="new-phone">Phone number</label><input id="new-phone" inputMode="tel" placeholder="(555) 000-0000" value={registration.phone} onChange={(event) => setRegistration({ ...registration, phone: event.target.value })} required /></div>
+              <div className="field full-field"><label htmlFor="new-phone">Phone number</label><input id="new-phone" inputMode="tel" placeholder="+256 7XX XXX XXX" value={registration.phone} onChange={(event) => setRegistration({ ...registration, phone: event.target.value })} required /></div>
               <button className="primary-button coral-button full" type="submit"><UserPlus size={18} /><span>Register & sign in</span><ArrowRight size={18} /></button>
               <p className="form-note">By continuing, you confirm this client has agreed to be added to the register.</p>
             </form>
