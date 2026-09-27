@@ -55,6 +55,12 @@ const formatPhone = (phone: string) => {
 const formatTime = (iso: string) =>
   new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 const isSameDay = (first: Date, second = new Date()) => first.toDateString() === second.toDateString();
+const getTimeGreeting = (date = new Date()) => {
+  const hour = date.getHours();
+  if (hour < 12) return "Good morning.";
+  if (hour < 18) return "Good afternoon.";
+  return "Good evening.";
+};
 const todayLabel = new Intl.DateTimeFormat("en", {
   weekday: "long",
   month: "long",
@@ -71,6 +77,7 @@ function readStorage<T>(key: string, fallback: T): T {
 }
 
 export default function Home() {
+  const [timeGreeting, setTimeGreeting] = useState(() => getTimeGreeting());
   const [clients, setClients] = useState<Client[]>(() => readStorage<Client[]>(CLIENTS_KEY, []));
   const [visits, setVisits] = useState<Visit[]>(() => readStorage<Visit[]>(VISITS_KEY, []));
   const [phone, setPhone] = useState("");
@@ -79,6 +86,12 @@ export default function Home() {
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
+
+  useEffect(() => {
+    const refreshGreeting = () => setTimeGreeting(getTimeGreeting());
+    const interval = window.setInterval(refreshGreeting, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
   const [registration, setRegistration] = useState({ name: "", day: "", month: "", phone: "" });
   const registrationRef = useRef<HTMLDivElement>(null);
 
@@ -185,7 +198,7 @@ export default function Home() {
       <section className="hero container">
         <div>
           <p className="eyebrow">DIGITAL REGISTRATION BOOK <span>•</span> TODAY</p>
-          <h1>Good morning.<br /><em>Ready when they are.</em></h1>
+          <h1>{timeGreeting}<br /><em>Ready when they are.</em></h1>
           <p className="hero-copy">Check in a returning client in seconds, or add a new client to your register without the paper chase.</p>
         </div>
         <div className="stat-strip">
