@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   Clock3,
+  LogOut,
   Search,
   ShieldCheck,
   Sparkles,
@@ -26,10 +27,12 @@ type Visit = {
   id: string;
   clientId: string;
   checkedInAt: string;
+  checkedOutAt?: string;
 };
 
 const CLIENTS_KEY = "guestflow-clients";
 const VISITS_KEY = "guestflow-visits";
+const CHECKOUT_AFTER_MS = 12 * 60 * 60 * 1000;
 const monthOptions = [
   "January",
   "February",
@@ -59,6 +62,7 @@ const formatPhone = (phone: string) => {
 const formatTime = (iso: string) =>
   new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 const isSameDay = (first: Date, second = new Date()) => first.toDateString() === second.toDateString();
+const isCheckedOut = (visit: Visit, now = Date.now()) => Boolean(visit.checkedOutAt) || now - new Date(visit.checkedInAt).getTime() >= CHECKOUT_AFTER_MS;
 const getTimeGreeting = (date = new Date()) => {
   const hour = date.getHours();
   if (hour < 12) return "Good morning.";
@@ -102,6 +106,25 @@ export default function Home() {
   useEffect(() => window.localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients)), [clients]);
   useEffect(() => window.localStorage.setItem(VISITS_KEY, JSON.stringify(visits)), [visits]);
   useEffect(() => {
+    const expireVisits = () => {
+      const now = Date.now();
+      setVisits((current) => {
+        let changed = false;
+        const next = current.map((visit) => {
+          if (!visit.checkedOutAt && now - new Date(visit.checkedInAt).getTime() >= CHECKOUT_AFTER_MS) {
+            changed = true;
+            return { ...visit, checkedOutAt: new Date(new Date(visit.checkedInAt).getTime() + CHECKOUT_AFTER_MS).toISOString() };
+          }
+          return visit;
+        });
+        return changed ? next : current;
+      });
+    };
+    expireVisits();
+    const interval = window.setInterval(expireVisits, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+  useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(null), 4200);
     return () => window.clearTimeout(timer);
@@ -111,6 +134,7 @@ export default function Home() {
     const today = new Date().toDateString();
     return visits.filter((visit) => new Date(visit.checkedInAt).toDateString() === today);
   }, [visits]);
+  const activeTodayVisits = useMemo(() => todayVisits.filter((visit) => !isCheckedOut(visit)), [todayVisits]);
 
   const activity = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -139,7 +163,7 @@ export default function Home() {
   };
 
   const checkIn = (client: Client) => {
-    if (todayVisits.some((visit) => visit.clientId === client.id)) {
+    if (activeTodayVisits.some((visit) => visit.clientId === client.id)) {
       setNotice({ title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." });
       setPhone("");
       setLookupState("idle");
@@ -152,6 +176,12 @@ export default function Home() {
     setPhone("");
     setLookupState("idle");
     setActiveClient(null);
+  };
+
+  const checkOut = (visit: Visit, clientName: string) => {
+    if (isCheckedOut(visit)) return;
+    setVisits((current) => current.map((item) => item.id === visit.id ? { ...item, checkedOutAt: new Date().toISOString() } : item));
+    setNotice({ title: `${clientName} is checked out`, detail: "Their visit has been closed in the register." });
   };
 
   const openRegistration = () => {
@@ -174,7 +204,7 @@ export default function Home() {
       createdAt: new Date().toISOString(),
     };
     if (!existing) setClients((current) => [client, ...current]);
-    if (todayVisits.some((visit) => visit.clientId === client.id)) {
+    if (activeTodayVisits.some((visit) => visit.clientId === client.id)) {
       setNotice({ title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." });
       setRegistration({ name: "", day: "", month: "", phone: "" });
       setShowRegistration(false);
@@ -243,7 +273,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="activity-section container"><div className="activity-heading"><div><span className="section-kicker">LIVE REGISTER</span><h2>Today’s activity <span className="activity-count">{todayVisits.length}</span></h2></div><div className="activity-search"><Search size={17} /><input placeholder="Search name or phone" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div><div className="activity-list">{activity.length > 0 ? activity.map(({ visit, client }) => { if (!client) return null; const newToday = isSameDay(new Date(client.createdAt)); return <div className="activity-row" key={visit.id}><div className="avatar avatar-lilac">{client.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="activity-person"><strong>{client.name}</strong><span>{formatPhone(client.phone)}</span></div><div className="activity-birthday"><span>Birthday</span><strong>{client.day} {client.month}</strong></div><div className="activity-time"><Clock3 size={16} /> {formatTime(visit.checkedInAt)}</div><span className={`signed-pill ${newToday ? "new-today-pill" : ""}`}><Check size={13} /> {newToday ? "New today" : "Returning"}</span></div>; }) : <div className="empty-activity"><div className="empty-icon"><Clock3 size={20} /></div><div><strong>No visits recorded yet today</strong><span>Check in your first client above and their visit will appear here.</span></div></div>}</div></section>
+      <section className="activity-section container"><div className="activity-heading"><div><span className="section-kicker">LIVE REGISTER</span><h2>Today’s activity <span className="activity-count">{todayVisits.length}</span></h2><p className="register-hint">Clients stay checked in until staff checks them out or 12 hours pass.</p></div><div className="activity-search"><Search size={17} /><input placeholder="Search name or phone" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div><div className="activity-list">{activity.length > 0 ? activity.map(({ visit, client }) => { if (!client) return null; const newToday = isSameDay(new Date(client.createdAt)); const checkedOut = isCheckedOut(visit); return <div className={`activity-row ${checkedOut ? "checked-out-row" : ""}`} key={visit.id}><div className="avatar avatar-lilac">{client.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="activity-person"><strong>{client.name}</strong><span>{formatPhone(client.phone)}</span></div><div className="activity-birthday"><span>Birthday</span><strong>{client.day} {client.month}</strong></div><div className="activity-time"><Clock3 size={16} /> {formatTime(visit.checkedInAt)}</div><span className={`signed-pill ${newToday ? "new-today-pill" : ""} ${checkedOut ? "checked-out-pill" : ""}`}><Check size={13} /> {checkedOut ? "Checked out" : newToday ? "New today" : "Returning"}</span>{!checkedOut && <button className="checkout-button" type="button" onClick={() => checkOut(visit, client.name)}><LogOut size={14} /> Check out</button>}</div>; }) : <div className="empty-activity"><div className="empty-icon"><Clock3 size={20} /></div><div><strong>No visits recorded yet today</strong><span>Check in your first client above and their visit will appear here.</span></div></div>}</div></section>
 
       <footer className="footer container"><span>guestflow <i>•</i> a calmer way to welcome people</span><span>Tablet mode <span className="toggle-on"><span /></span></span></footer>
       {notice && <div className="toast"><div className="toast-check"><Check size={17} /></div><div><strong>{notice.title}</strong><span>{notice.detail}</span></div><button type="button" aria-label="Dismiss notification" onClick={() => setNotice(null)}><X size={16} /></button></div>}

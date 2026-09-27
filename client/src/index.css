@@ -231,3 +231,12 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 
 .client-flow-step > p { font-size: 15px; line-height: 1.55; }
 @media (max-width: 470px) { .client-flow-step > p { font-size: 14px; } }
+
+.register-hint { margin: 7px 0 0; color: #9b8078; font-size: 12px; line-height: 1.45; }
+.activity-row { gap: 12px; }
+.checkout-button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #f1c4ad; border-radius: 999px; background: #fff7f0; color: #c65020; font: inherit; font-size: 11px; font-weight: 700; padding: 8px 11px; white-space: nowrap; transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease; }
+.checkout-button:hover { background: #ffeadc; border-color: #ffad82; color: #e94700; transform: translateY(-1px); }
+.checked-out-row { opacity: .68; }
+.checked-out-pill { color: #806c68 !important; background: #f1e9e3 !important; }
+@media (max-width: 900px) { .checkout-button { margin-left: auto; } }
+@media (max-width: 620px) { .register-hint { max-width: 250px; }.checkout-button { padding: 7px 9px; font-size: 10px; }.activity-row { gap: 8px; } }
