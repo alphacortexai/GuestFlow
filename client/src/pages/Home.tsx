@@ -266,6 +266,13 @@ export default function Home() {
         <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href={branchId ? `/welcome?branchId=${encodeURIComponent(branchId)}` : "/welcome"}>Client screen ↗</Link></div>
       </header>
 
+      <nav className="workspace-tabs container" aria-label="GuestFlow workspace sections">
+        <button type="button" className={activeWorkspaceTab === "today" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("today")} aria-selected={activeWorkspaceTab === "today"}>Today's activity</button>
+        <button type="button" className={activeWorkspaceTab === "returning" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("returning")} aria-selected={activeWorkspaceTab === "returning"}>Returning client</button>
+        <button type="button" className={activeWorkspaceTab === "branches" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("branches")} aria-selected={activeWorkspaceTab === "branches"}>Branch management</button>
+        <button type="button" className={activeWorkspaceTab === "client" ? "is-active" : ""} onClick={() => { setActiveWorkspaceTab("client"); setShowRegistration(true); }}>Client registration</button>
+      </nav>
+
       {integrationError && <div role="alert" className="container mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">SpaGym is not connected: {integrationError}. Client and visit data are not being stored on this device.</div>}
 
       <section className="hero container">
@@ -279,13 +286,6 @@ export default function Home() {
           <div className="stat-card"><span className="stat-icon peach"><Users size={17} /></span><div><strong>{clientCount ?? "—"}</strong><span>registered clients</span></div></div>
         </div>
       </section>
-
-      <nav className="workspace-tabs container" aria-label="GuestFlow workspace sections">
-        <button type="button" className={activeWorkspaceTab === "today" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("today")} aria-selected={activeWorkspaceTab === "today"}>Today's activity</button>
-        <button type="button" className={activeWorkspaceTab === "returning" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("returning")} aria-selected={activeWorkspaceTab === "returning"}>Returning client</button>
-        <button type="button" className={activeWorkspaceTab === "branches" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("branches")} aria-selected={activeWorkspaceTab === "branches"}>Branch management</button>
-        <button type="button" className={activeWorkspaceTab === "client" ? "is-active" : ""} onClick={() => { setActiveWorkspaceTab("client"); setShowRegistration(true); }}>Client registration</button>
-      </nav>
 
       {activeWorkspaceTab === "branches" && <section className="branch-admin container" aria-labelledby="branch-admin-title">
         <div className="branch-admin-heading">
