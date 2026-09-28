@@ -14,6 +14,19 @@ export function createApp() {
   app.disable("x-powered-by");
   app.use(express.json({ limit: "24kb" }));
 
+  // Vercel rewrites /api/:path* to api/index.ts and exposes the wildcard as
+  // a `path` query parameter. Restore the original Express URL before routing.
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    const rewrittenPath = req.query.path;
+    if (typeof rewrittenPath === "string" && rewrittenPath.length > 0) {
+      const query = new URL(req.originalUrl || req.url, "http://localhost").searchParams;
+      query.delete("path");
+      const queryString = query.toString();
+      req.url = `/api/${rewrittenPath.replace(/^\/+/, "")}${queryString ? `?${queryString}` : ""}`;
+    }
+    next();
+  });
+
   function limitIntegrationTraffic(req: Request, res: Response, next: NextFunction) {
     const now = Date.now();
     const address = req.ip || req.socket.remoteAddress || "unknown";
