@@ -44,7 +44,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .client-link:hover { color: var(--coral-dark); }
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #69b889; box-shadow: 0 0 0 4px rgba(105,184,137,.12); }
 .meta-divider { height: 16px; width: 1px; background: #ded9d4; margin: 0 3px; }
-.hero { padding: 30px 0 18px; display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; }
+.hero { padding: 12px 0 18px; display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; }
 .eyebrow, .section-kicker { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .16em; color: #a09a95; font-weight: 500; }
 .eyebrow span { color: var(--coral); padding: 0 4px; }
 h1 { font-size: clamp(38px, 5.3vw, 66px); line-height: .99; letter-spacing: -.065em; margin: 12px 0 18px; font-weight: 600; }
@@ -275,7 +275,7 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 .registration-panel.is-open { margin-top: 0; }
 @media (min-width: 700px) and (max-width: 1200px) {
   .container, .topbar { width: min(100% - 56px, 1040px); }
-  .hero { padding-top: 22px; padding-bottom: 14px; }
+  .hero { padding-top: 10px; padding-bottom: 14px; }
   .hero h1 { font-size: clamp(42px, 5vw, 58px); }
   .workspace { max-width: 1040px; }
   .workspace-tabs { max-width: 1040px; }
