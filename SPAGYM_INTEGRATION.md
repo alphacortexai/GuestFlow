@@ -20,11 +20,12 @@ Configure SpaGym's Admin SDK credentials and API contract as described in [SpaGy
 - Existing client lookup searches SpaGym using normalized phone numbers.
 - New registrations are created in SpaGym; duplicate phones return the existing SpaGym client rather than creating another record.
 - GuestFlow loads SpaGym branches. Its branch panel creates a `/welcome?branchId=<SpaGym-branch-id>` kiosk link per branch and filters the front-desk summary and activity by the selected branch.
-- New profiles created from a branch-specific kiosk link are assigned to that SpaGym branch. Returning clients keep their original profile branch, while their visit is attributed to the branch where they checked in.
+- A branch-specific kiosk link supplies its branch only when a new client profile is saved. Check-ins—including returning clients—use the branch already saved on the SpaGym profile; the link does not reassign or override a check-in branch.
+- After a successful registration, GuestFlow checks in by the client ID returned from SpaGym rather than searching again by the entered phone number. SpaGym normalizes international numbers entered with a `00` prefix before storage and lookup.
 - A client may have one active visit at a time. Repeat active check-ins are deduplicated; manual checkout or the existing 12-hour automatic checkout closes that visit, after which a same-day re-entry creates a new visit record. GuestFlow's front-desk activity is refreshed from SpaGym every 30 seconds.
 - Check-outs from GuestFlow and from SpaGym's **Spa check-ins** section update the same Firestore visit document. Automatic timeout check-outs are also persisted in Firestore.
 - If the SpaGym server or shared key is unavailable, the app displays a connection error and does not fall back to browser storage.
 
 ## Useful endpoints
 
-GuestFlow exposes its same-origin server proxy under `/api/spagym/` for branch listing, client lookup, registration, check-in, checkout and today's summary. SpaGym validates branch IDs against its registered branches. The browser never receives the SpaGym service key.
+GuestFlow exposes its same-origin server proxy under `/api/spagym/` for branch listing, client lookup, registration, check-in, checkout and today's summary. SpaGym validates branch IDs when new profiles are created; check-ins use the saved profile branch. The browser never receives the SpaGym service key.
