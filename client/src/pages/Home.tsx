@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import {
   ArrowRight,
   Check,
@@ -91,6 +92,8 @@ export default function Home() {
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
   const activeBranchName = branches.find((branch) => branch.id === branchId)?.name || "All branches";
 
+  const isVisible = usePageVisibility();
+
   useEffect(() => {
     const refreshGreeting = () => setTimeGreeting(getTimeGreeting());
     const interval = window.setInterval(refreshGreeting, 60_000);
@@ -124,9 +127,12 @@ export default function Home() {
 
   useEffect(() => {
     refreshDashboard();
-    const interval = window.setInterval(refreshDashboard, 30_000);
+    const interval = window.setInterval(() => {
+      if (!isVisible) return;
+      refreshDashboard();
+    }, 30_000);
     return () => window.clearInterval(interval);
-  }, [refreshDashboard]);
+  }, [refreshDashboard, isVisible]);
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(null), 4200);
