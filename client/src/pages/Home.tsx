@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
+  Copy,
   Clock3,
   LogOut,
   Search,
@@ -13,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Link } from "wouter";
-import { checkIn as apiCheckIn, checkOut as apiCheckOut, createClient as apiCreateClient, getSummary, SpaGymApiError, SpaGymVisit, lookupClient as apiLookupClient } from "@/lib/spaGymApi";
+import { checkIn as apiCheckIn, checkOut as apiCheckOut, createClient as apiCreateClient, getBranches, getSummary, SpaGymApiError, SpaGymBranch, SpaGymVisit, lookupClient as apiLookupClient } from "@/lib/spaGymApi";
 
 type Client = {
   id: string;
@@ -75,6 +76,9 @@ export default function Home() {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [clientCount, setClientCount] = useState<number | null>(null);
   const [visitCount, setVisitCount] = useState(0);
+  const [branches, setBranches] = useState<SpaGymBranch[]>([]);
+  const [branchId, setBranchId] = useState(() => new URLSearchParams(window.location.search).get("branchId") || "");
+  const [branchError, setBranchError] = useState("");
   const [integrationError, setIntegrationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phone, setPhone] = useState("");
@@ -83,6 +87,7 @@ export default function Home() {
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
+  const activeBranchName = branches.find((branch) => branch.id === branchId)?.name || "All branches";
 
   useEffect(() => {
     const refreshGreeting = () => setTimeGreeting(getTimeGreeting());
@@ -94,7 +99,7 @@ export default function Home() {
 
   const refreshDashboard = useCallback(async () => {
     try {
-      const summary = await getSummary();
+      const summary = await getSummary(branchId || undefined);
       setClientCount(summary.clientCount);
       setVisitCount(summary.visitCount);
       setVisits(summary.visits || []);
@@ -102,6 +107,16 @@ export default function Home() {
     } catch (error) {
       setIntegrationError(error instanceof Error ? error.message : "Unable to reach SpaGym.");
     }
+  }, [branchId]);
+
+  useEffect(() => {
+    getBranches()
+      .then((items) => {
+        setBranches(items);
+        setBranchError("");
+        setBranchId((current) => current && items.some((branch) => branch.id === current) ? current : items.length === 1 ? items[0].id : "");
+      })
+      .catch((error) => setBranchError(error instanceof Error ? error.message : "Could not load SpaGym branches."));
   }, []);
 
   useEffect(() => {
@@ -123,6 +138,20 @@ export default function Home() {
       .filter(({ client }) => !query || client.clientName.toLowerCase().includes(query) || client.phoneNumber.includes(query))
       .slice(0, 8);
   }, [visits, search]);
+
+  const branchWelcomeUrl = (selectedId: string) => {
+    const url = new URL("/welcome", window.location.origin);
+    url.searchParams.set("branchId", selectedId);
+    return url.toString();
+  };
+  const copyBranchLink = async (branch: SpaGymBranch) => {
+    try {
+      await navigator.clipboard.writeText(branchWelcomeUrl(branch.id));
+      setNotice({ title: `${branch.name} link copied`, detail: "Share this link with clients for this branch." });
+    } catch {
+      setNotice({ title: "Could not copy link", detail: branchWelcomeUrl(branch.id) });
+    }
+  };
 
   const findClient = async () => {
     const normalized = normalizePhone(phone);
@@ -160,7 +189,7 @@ export default function Home() {
   const checkIn = async (client: Client) => {
     setIsSubmitting(true);
     try {
-      const result = await apiCheckIn(client.phone);
+      const result = await apiCheckIn(client.phone, branchId || undefined);
       setNotice(result.alreadyCheckedIn
         ? { title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
         : { title: `${client.name} is checked in`, detail: "Their visit has been added to SpaGym’s shared register." });
@@ -194,16 +223,22 @@ export default function Home() {
 
   const registerClient = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (branches.length > 1 && !branchId) {
+      setNotice({ title: "Choose a branch first", detail: "Select the correct branch above so the client is saved in the right SpaGym branch." });
+      return;
+    }
     const normalized = normalizePhone(registration.phone);
     if (!registration.name.trim() || !registration.day || !registration.month || normalized.length < 7) return;
     setIsSubmitting(true);
     try {
-      const result = await apiCreateClient({ name: registration.name.trim(), phone: registration.phone, day: registration.day, month: registration.month });
-      const signIn = await apiCheckIn(registration.phone);
+      const result = await apiCreateClient({ name: registration.name.trim(), phone: registration.phone, day: registration.day, month: registration.month, branchId: branchId || undefined });
+      const signIn = await apiCheckIn(registration.phone, branchId || undefined);
       await refreshDashboard();
       setNotice(signIn.alreadyCheckedIn
         ? { title: `${result.client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
-        : { title: result.created ? "New client registered" : `${result.client.name} is checked in`, detail: "The client record and visit are saved in SpaGym." });
+        : result.created
+          ? { title: "New client registered", detail: `The profile and visit are saved in SpaGym under ${branchId ? activeBranchName : "the default branch"}.` }
+          : { title: `${result.client.name} already exists`, detail: `No duplicate profile was created. Their profile remains under ${result.client.branch || "an unassigned branch"}; this visit is recorded at ${branchId ? activeBranchName : result.client.branch || "their existing branch"}.` });
       setRegistration({ name: "", day: "", month: "", phone: "" });
       setShowRegistration(false);
     } catch (error) {
@@ -222,7 +257,7 @@ export default function Home() {
           <div className="brand-mark"><Sparkles size={18} strokeWidth={2.5} /></div>
           <div><div className="brand-name">guestflow</div><div className="brand-caption">your welcome desk, simplified</div></div>
         </div>
-        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href="/welcome">Client screen ↗</Link></div>
+        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href={branchId ? `/welcome?branchId=${encodeURIComponent(branchId)}` : "/welcome"}>Client screen ↗</Link></div>
       </header>
 
       {integrationError && <div role="alert" className="container mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">SpaGym is not connected: {integrationError}. Client and visit data are not being stored on this device.</div>}
@@ -237,6 +272,15 @@ export default function Home() {
           <div className="stat-card"><span className="stat-icon mint"><Check size={17} /></span><div><strong>{visitCount}</strong><span>checked in today</span></div></div>
           <div className="stat-card"><span className="stat-icon peach"><Users size={17} /></span><div><strong>{clientCount ?? "—"}</strong><span>registered clients</span></div></div>
         </div>
+      </section>
+
+      <section className="branch-admin container" aria-labelledby="branch-admin-title">
+        <div className="branch-admin-heading">
+          <div><span className="section-kicker">BRANCH MANAGEMENT</span><h2 id="branch-admin-title">Branch links &amp; register</h2><p>Choose a branch to filter today’s activity and create branch-specific client check-in links.</p></div>
+          <label className="branch-filter"><span>View branch</span><select value={branchId} onChange={(event) => setBranchId(event.target.value)}><option value="">All branches</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label>
+        </div>
+        {branchError ? <div className="branch-error" role="alert">Could not load branch links from SpaGym. Deploy the updated SpaGym integration API and check the GuestFlow connection. ({branchError})</div> : branches.length === 0 ? <div className="branch-empty">No SpaGym branches were returned. Add branches in SpaGym, then refresh this page.</div> : <div className="branch-link-grid">{branches.map((branch) => <article className={`branch-link-card ${branch.id === branchId ? "is-selected" : ""}`} key={branch.id}><div><span className="branch-link-label">CLIENT CHECK-IN</span><h3>{branch.name}</h3><a href={branchWelcomeUrl(branch.id)} target="_blank" rel="noreferrer">Open kiosk screen <ArrowRight size={14} /></a></div><button type="button" onClick={() => copyBranchLink(branch)} aria-label={`Copy ${branch.name} client link`}><Copy size={15} /><span>Copy link</span></button></article>)}</div>}
+        <p className="branch-filter-note">Showing: <strong>{activeBranchName}</strong>. New client records and visits created from a branch link are tagged to that branch.</p>
       </section>
 
       <section className="workspace container">
@@ -259,7 +303,7 @@ export default function Home() {
         <div className="secondary-column" ref={registrationRef}>
           <div className={`panel registration-panel ${showRegistration ? "is-open" : ""}`}>
             <div className="panel-heading"><div><span className="section-kicker coral">NEW CLIENT</span><h2>Start a new record</h2></div><div className="step-badge coral-badge">02 <span>/</span> 02</div></div>
-            <p className="panel-description">A few details now makes every next visit feel effortless.</p>
+            <p className="panel-description">A few details now makes every next visit feel effortless. {branchId ? `This record will be assigned to ${activeBranchName}.` : branches.length > 1 ? "Select a branch above before registering a new client." : ""}</p>
             <form onSubmit={registerClient} className="registration-form">
               <div className="field full-field"><label htmlFor="name">Full name</label><input id="name" placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></div>
               <div className="field-group"><div className="field"><label htmlFor="day">Birthday · day</label><div className="select-wrap"><select id="day" value={registration.day} onChange={(event) => setRegistration({ ...registration, day: event.target.value })} required><option value="">Day</option>{Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}</option>)}</select><ChevronDown size={17} /></div></div><div className="field"><label htmlFor="month">Month</label><div className="select-wrap"><select id="month" value={registration.month} onChange={(event) => setRegistration({ ...registration, month: event.target.value })} required><option value="">Month</option>{monthOptions.map((month) => <option key={month} value={month}>{month}</option>)}</select><ChevronDown size={17} /></div></div></div>

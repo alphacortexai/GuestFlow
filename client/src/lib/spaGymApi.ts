@@ -11,6 +11,8 @@ export type SpaGymClient = {
   createdAt: string | null;
 };
 
+export type SpaGymBranch = { id: string; name: string };
+
 export type SpaGymVisit = {
   id: string;
   clientId: string;
@@ -64,17 +66,22 @@ export async function lookupClient(phone: string) {
   return result.client;
 }
 
-export async function createClient(input: { name: string; phone: string; day: string; month: string }) {
+export async function getBranches() {
+  const result = await request<{ branches: SpaGymBranch[] }>('/branches');
+  return result.branches;
+}
+
+export async function createClient(input: { name: string; phone: string; day: string; month: string; branchId?: string }) {
   return request<{ client: SpaGymClient; created: boolean }>('/clients', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
-export async function checkIn(phone: string) {
+export async function checkIn(phone: string, branchId?: string) {
   return request<{ client: SpaGymClient; visit: SpaGymVisit; alreadyCheckedIn: boolean }>('/check-ins', {
     method: 'POST',
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ phone, ...(branchId ? { branchId } : {}) }),
   });
 }
 
@@ -83,8 +90,9 @@ export async function getCheckIns() {
   return result.visits;
 }
 
-export async function getSummary() {
-  return request<{ clientCount: number; visitCount: number; visits: SpaGymVisit[]; date: string }>('/summary');
+export async function getSummary(branchId?: string) {
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : '';
+  return request<{ clientCount: number; visitCount: number; visits: SpaGymVisit[]; date: string }>(`/summary${query}`);
 }
 
 export async function checkOut(visitId: string) {
