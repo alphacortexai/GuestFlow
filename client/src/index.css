@@ -327,3 +327,50 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
   .not-found-card .client-register-button { flex-basis: 100%; }
 }
 .client-form input[aria-invalid="true"] { border-color: #d7835e; box-shadow: 0 0 0 4px rgba(215,131,94,.1); }
+
+/* Tablet kiosk readability: larger card, touch targets, and supporting copy. */
+.client-card { width: min(100%, 560px); padding: 56px 56px 46px; border-radius: 28px; }
+.client-card h1 { font-size: 52px; margin: 14px 0 18px; }
+.client-card p { max-width: 390px; font-size: 18px; line-height: 1.55; margin-bottom: 30px; }
+.client-eyebrow { font-size: 14px; }
+.client-form label { font-size: 16px; margin-bottom: 10px; }
+.client-form input { height: 68px; padding: 0 18px; border-radius: 14px; font-size: 22px; }
+.client-primary-button { height: 62px; border-radius: 14px; font-size: 17px; }
+.client-privacy { margin-top: 22px; font-size: 14px; line-height: 1.45; }
+.client-not-found { padding: 16px; border-radius: 15px; }
+.not-found-copy strong { font-size: 16px; }
+.not-found-copy span { font-size: 14px; }
+.client-register-button { min-height: 48px; font-size: 14px; }
+.client-back, .client-progress { font-size: 14px; }
+.client-progress-bar { height: 5px; margin: 20px 0 28px; }
+.client-choice { min-height: 86px; gap: 16px; padding: 14px 16px; border-radius: 16px; }
+.client-choice strong { font-size: 16px; }
+.client-choice small { font-size: 14px; margin-top: 5px; }
+.calendar-picker-heading { font-size: 15px; }
+.month-grid button { height: 50px; font-size: 14px; }
+.calendar-toolbar strong { font-size: 16px; }
+.calendar-weekdays span { font-size: 12px; }
+.calendar-grid button, .calendar-grid span { min-height: 38px; font-size: 14px; }
+.calendar-selection { min-height: 38px; font-size: 14px; }
+.register-hint { font-size: 14px; }
+
+@media (max-width: 620px) {
+  .client-card { padding: 42px 28px 34px; }
+  .client-card h1 { font-size: 44px; }
+  .client-card p { font-size: 17px; }
+}
+
+@media (max-width: 470px) {
+  .client-card { width: min(100%, 390px); padding: 36px 22px 28px; border-radius: 24px; }
+  .client-card h1 { font-size: 40px; }
+  .client-card p { font-size: 16px; }
+  .client-form label { font-size: 15px; }
+  .client-form input { height: 60px; font-size: 19px; }
+  .client-primary-button { height: 56px; font-size: 16px; }
+  .client-privacy { font-size: 12px; }
+  .client-choice { min-height: 76px; }
+  .client-choice strong { font-size: 15px; }
+  .client-choice small { font-size: 13px; }
+  .month-grid button { height: 44px; }
+  .calendar-grid button, .calendar-grid span { min-height: 32px; }
+}
