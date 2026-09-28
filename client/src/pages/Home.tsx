@@ -86,7 +86,7 @@ export default function Home() {
   const [lookupState, setLookupState] = useState<"idle" | "found" | "missing">("idle");
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"today" | "branches" | "client">("today");
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"today" | "returning" | "branches" | "client">("today");
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
   const activeBranchName = branches.find((branch) => branch.id === branchId)?.name || "All branches";
 
@@ -283,6 +283,7 @@ export default function Home() {
 
       <nav className="workspace-tabs container" aria-label="GuestFlow workspace sections">
         <button type="button" className={activeWorkspaceTab === "today" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("today")} aria-selected={activeWorkspaceTab === "today"}>Today's activity</button>
+        <button type="button" className={activeWorkspaceTab === "returning" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("returning")} aria-selected={activeWorkspaceTab === "returning"}>Returning client</button>
         <button type="button" className={activeWorkspaceTab === "branches" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("branches")} aria-selected={activeWorkspaceTab === "branches"}>Branch management</button>
         <button type="button" className={activeWorkspaceTab === "client" ? "is-active" : ""} onClick={() => { setActiveWorkspaceTab("client"); setShowRegistration(true); }}>Client registration</button>
       </nav>
@@ -298,7 +299,7 @@ export default function Home() {
 
       <section className="workspace container">
         <div className="primary-column">
-          <div className="panel checkin-panel">
+          <div className={`panel checkin-panel ${activeWorkspaceTab === "returning" ? "is-visible" : "is-hidden"}`}>
             <div className="panel-heading"><div><span className="section-kicker">RETURNING CLIENT</span><h2>Find their visit</h2></div><div className="step-badge">01 <span>/</span> 02</div></div>
             <p className="panel-description">Enter the phone number from their client record to sign them in.</p>
             <div className="phone-entry">

@@ -271,6 +271,7 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 .workspace-tabs button:hover { background: #fff4e9; color: var(--coral); }
 .workspace-tabs button.is-active { background: var(--coral); color: white; box-shadow: 0 5px 14px rgba(255,90,10,.18); }
 .branch-admin { margin-bottom: 24px; }
+.checkin-panel.is-hidden { display: none; }
 .registration-panel.is-open { margin-top: 0; }
 @media (min-width: 700px) and (max-width: 1200px) {
   .container, .topbar { width: min(100% - 56px, 1040px); }
