@@ -456,3 +456,20 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
   .admin-auth-brand { margin-bottom: 30px; }
   .admin-auth-card h1 { font-size: 42px; }
 }
+
+/* Initial client greeting: warm context without crowding the check-in action. */
+.client-welcome-copy { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 auto 15px; }
+.client-greeting { color: var(--coral); font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.client-location { color: #4d3c34; font-size: 19px; font-weight: 600; line-height: 1.25; }
+.client-location strong { color: var(--coral); }
+.client-welcome-copy + h1 { margin-top: 0; }
+@media (max-width: 470px) {
+  .client-welcome-copy { gap: 5px; margin-bottom: 12px; }
+  .client-greeting { font-size: 12px; }
+  .client-location { font-size: 17px; }
+}
+@media (orientation: landscape) and (min-width: 800px) {
+  .client-welcome-copy { gap: 7px; margin-bottom: 18px; }
+  .client-greeting { font-size: 15px; }
+  .client-location { font-size: 22px; }
+}
