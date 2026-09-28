@@ -316,7 +316,7 @@ export default function Home() {
               <button className="primary-button full" type="button" onClick={findClient} disabled={isSubmitting}><span>{isSubmitting ? "Checking…" : "Check phone number"}</span><ArrowRight size={18} /></button>
             </div>
             {lookupState === "found" && activeClient && <div className="result-card found-card"><div className="avatar avatar-coral">{activeClient.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="result-copy"><span className="result-label"><span className="result-dot" /> Client found</span><strong>{activeClient.name}</strong><span>{formatPhone(activeClient.phone)} <span className="middot">•</span> {activeClient.day} {activeClient.month}</span></div><button className="checkin-button" type="button" onClick={() => checkIn(activeClient)} disabled={isSubmitting}><Check size={17} /> {isSubmitting ? "Saving…" : "Sign in"}</button></div>}
-            {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><strong>New client?</strong><span>Add their details to register them now.</span></div><button className="text-button" type="button" onClick={openRegistration}>Add client <ArrowRight size={16} /></button></div>}
+            {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><strong>Phone No. Not Found</strong><span>Register &amp; Check In Now in 10 Secs</span></div><button className="text-button" type="button" onClick={openRegistration}>Register <ArrowRight size={16} /></button></div>}
           </div>
 
         </div>
