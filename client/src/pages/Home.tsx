@@ -105,7 +105,7 @@ export default function Home() {
 
   const refreshDashboard = useCallback(async () => {
     try {
-      const summary = await getSummary(branchId || undefined);
+      const summary = await getSummary(branchId || undefined, true);
       setClientCount(summary.clientCount);
       setVisitCount(summary.visitCount);
       setVisits(summary.visits || []);
@@ -116,7 +116,7 @@ export default function Home() {
   }, [branchId]);
 
   useEffect(() => {
-    getBranches()
+    getBranches(true)
       .then((items) => {
         setBranches(items);
         setBranchError("");
@@ -172,7 +172,7 @@ export default function Home() {
     setPhoneError("");
     setIsSubmitting(true);
     try {
-      const result = await apiLookupClient(phone);
+      const result = await apiLookupClient(phone, true);
       setActiveClient({
         id: result.id,
         name: result.name,
@@ -199,7 +199,7 @@ export default function Home() {
   const checkIn = async (client: Client) => {
     setIsSubmitting(true);
     try {
-      const result = await apiCheckIn(client.phone, client.id);
+      const result = await apiCheckIn(client.phone, client.id, true);
       setNotice(result.alreadyCheckedIn
         ? { title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
         : { title: `${client.name} is checked in`, detail: "Their visit has been added to SpaGym’s shared register." });
@@ -217,7 +217,7 @@ export default function Home() {
   const checkOut = async (visit: Visit, clientName: string) => {
     if (isCheckedOut(visit)) return;
     try {
-      await apiCheckOut(visit.id);
+      await apiCheckOut(visit.id, true);
       await refreshDashboard();
       setNotice({ title: `${clientName} is checked out`, detail: "Their departure has been saved to SpaGym’s shared register." });
     } catch (error) {
@@ -247,9 +247,9 @@ export default function Home() {
     setIsSubmitting(true);
     let savedClientName = "";
     try {
-      const result = await apiCreateClient({ name: registration.name.trim(), phone: registration.phone, day: registration.day, month: registration.month, branchId: branchId || undefined });
+      const result = await apiCreateClient({ name: registration.name.trim(), phone: registration.phone, day: registration.day, month: registration.month, branchId: branchId || undefined }, true);
       savedClientName = result.client.name;
-      const signIn = await apiCheckIn(registration.phone, result.client.id);
+      const signIn = await apiCheckIn(registration.phone, result.client.id, true);
       await refreshDashboard();
       setNotice(signIn.alreadyCheckedIn
         ? { title: `${result.client.name} is already checked in`, detail: "This client already has a visit recorded for today." }

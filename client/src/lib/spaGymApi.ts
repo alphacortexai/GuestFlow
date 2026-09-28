@@ -42,12 +42,12 @@ export class SpaGymApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, admin = false): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`/api/spagym${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
+      headers: { 'Content-Type': 'application/json', ...(admin ? { 'X-GuestFlow-Admin': '1' } : {}), ...init?.headers },
       cache: 'no-store',
     });
   } catch {
@@ -61,28 +61,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-export async function lookupClient(phone: string) {
-  const result = await request<{ client: SpaGymClient }>(`/clients/lookup?phone=${encodeURIComponent(phone)}`);
+export async function lookupClient(phone: string, admin = false) {
+  const result = await request<{ client: SpaGymClient }>(`/clients/lookup?phone=${encodeURIComponent(phone)}`, undefined, admin);
   return result.client;
 }
 
-export async function getBranches() {
-  const result = await request<{ branches: SpaGymBranch[] }>('/branches');
+export async function getBranches(admin = false) {
+  const result = await request<{ branches: SpaGymBranch[] }>('/branches', undefined, admin);
   return result.branches;
 }
 
-export async function createClient(input: { name: string; phone: string; day: string; month: string; branchId?: string }) {
+export async function createClient(input: { name: string; phone: string; day: string; month: string; branchId?: string }, admin = false) {
   return request<{ client: SpaGymClient; created: boolean }>('/clients', {
     method: 'POST',
     body: JSON.stringify(input),
-  });
+  }, admin);
 }
 
-export async function checkIn(phone: string, clientId?: string) {
+export async function checkIn(phone: string, clientId?: string, admin = false) {
   return request<{ client: SpaGymClient; visit: SpaGymVisit; alreadyCheckedIn: boolean }>('/check-ins', {
     method: 'POST',
     body: JSON.stringify({ phone, ...(clientId ? { clientId } : {}) }),
-  });
+  }, admin);
 }
 
 export async function getCheckIns() {
@@ -90,14 +90,14 @@ export async function getCheckIns() {
   return result.visits;
 }
 
-export async function getSummary(branchId?: string) {
+export async function getSummary(branchId?: string, admin = false) {
   const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : '';
-  return request<{ clientCount: number; visitCount: number; visits: SpaGymVisit[]; date: string }>(`/summary${query}`);
+  return request<{ clientCount: number; visitCount: number; visits: SpaGymVisit[]; date: string }>(`/summary${query}`, undefined, admin);
 }
 
-export async function checkOut(visitId: string) {
+export async function checkOut(visitId: string, admin = false) {
   const result = await request<{ visit: SpaGymVisit }>(`/check-ins/${encodeURIComponent(visitId)}/checkout`, {
     method: 'POST',
-  });
+  }, admin);
   return result.visit;
 }

@@ -1,5 +1,6 @@
 import express from "express";
 import type { NextFunction, Request, Response } from "express";
+import { createHmac, timingSafeEqual } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -8,11 +9,79 @@ const __dirname = path.dirname(__filename);
 const proxyWindowMs = 60_000;
 const proxyLimit = 90;
 const proxyHits = new Map<string, { count: number; resetAt: number }>();
+const adminCookieName = "guestflow_admin_session";
+const adminSessionTtlSeconds = 8 * 60 * 60;
+
+function adminSecret() {
+  return process.env.ADMIN_SESSION_SECRET?.trim() || process.env.ADMIN_PASSWORD?.trim() || "";
+}
+
+function signAdminSession(timestamp: string) {
+  return createHmac("sha256", adminSecret()).update(timestamp).digest("hex");
+}
+
+function hasAdminSession(req: Request) {
+  const cookieHeader = req.headers.cookie || "";
+  const cookies = Object.fromEntries(cookieHeader.split(";").map((part) => {
+    const [key, ...value] = part.trim().split("=");
+    return [key, value.join("=")];
+  }).filter(([key]) => key));
+  const raw = cookies[adminCookieName] || "";
+  const [timestamp, signature] = raw.split(".");
+  const issuedAt = Number(timestamp);
+  if (!adminSecret() || !timestamp || !signature || !Number.isFinite(issuedAt)) return false;
+  if (Math.floor(Date.now() / 1000) - issuedAt > adminSessionTtlSeconds) return false;
+  const expected = signAdminSession(timestamp);
+  const actualBuffer = Buffer.from(signature, "hex");
+  const expectedBuffer = Buffer.from(expected, "hex");
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function setAdminCookie(res: Response, value: string, maxAge: number) {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  res.setHeader("Set-Cookie", `${adminCookieName}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${secure}`);
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!hasAdminSession(req)) {
+    res.status(401).json({ error: "Admin login required." });
+    return;
+  }
+  next();
+}
 
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "24kb" }));
+
+  app.post("/api/auth/login", (req: Request, res: Response) => {
+    const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
+    if (!configuredPassword) {
+      res.status(503).json({ error: "Admin password is not configured on the GuestFlow server." });
+      return;
+    }
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const passwordBuffer = Buffer.from(password);
+    const configuredBuffer = Buffer.from(configuredPassword);
+    const matches = passwordBuffer.length === configuredBuffer.length && timingSafeEqual(passwordBuffer, configuredBuffer);
+    if (!matches) {
+      res.status(401).json({ error: "Incorrect admin password." });
+      return;
+    }
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    setAdminCookie(res, `${timestamp}.${signAdminSession(timestamp)}`, adminSessionTtlSeconds);
+    res.json({ authenticated: true });
+  });
+
+  app.get("/api/auth/session", (req: Request, res: Response) => {
+    res.json({ authenticated: hasAdminSession(req) });
+  });
+
+  app.post("/api/auth/logout", (_req: Request, res: Response) => {
+    setAdminCookie(res, "", 0);
+    res.json({ authenticated: false });
+  });
 
   // Vercel rewrites /api/:path* to api/index.ts and exposes the wildcard as
   // a `path` query parameter. Restore the original Express URL before routing.
@@ -86,16 +155,21 @@ export function createApp() {
   }
 
   // These endpoints are deliberately narrow: the browser never receives the SpaGym API secret.
-  app.get("/api/spagym/branches", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "branches"));
-  app.get("/api/spagym/clients/lookup", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "clients/lookup"));
-  app.post("/api/spagym/clients", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "clients"));
-  app.post("/api/spagym/check-ins", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
-  app.get("/api/spagym/check-ins", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
-  app.post("/api/spagym/check-ins/:visitId/checkout", limitIntegrationTraffic, (req: Request, res: Response) => {
+  function adminHeaderIfPresent(req: Request, res: Response, next: NextFunction) {
+    if (req.headers["x-guestflow-admin"] === "1") return requireAdmin(req, res, next);
+    next();
+  }
+
+  app.get("/api/spagym/branches", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "branches"));
+  app.get("/api/spagym/clients/lookup", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "clients/lookup"));
+  app.post("/api/spagym/clients", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "clients"));
+  app.post("/api/spagym/check-ins", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
+  app.get("/api/spagym/check-ins", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
+  app.post("/api/spagym/check-ins/:visitId/checkout", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => {
     req.body = { ...(req.body || {}), id: req.params.visitId };
     return spaGymProxy(req, res, "check-ins/checkout");
   });
-  app.get("/api/spagym/summary", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "summary"));
+  app.get("/api/spagym/summary", limitIntegrationTraffic, requireAdmin, (req: Request, res: Response) => spaGymProxy(req, res, "summary"));
 
   // Vercel serves the Vite output as static files. The fallback is only needed by the local standalone server.
   if (!process.env.VERCEL) {

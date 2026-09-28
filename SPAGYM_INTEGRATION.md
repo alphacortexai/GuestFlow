@@ -9,9 +9,13 @@ Set these variables on the GuestFlow **server/runtime**, not as `VITE_*` fronten
 ```env
 SPAGYM_API_URL=https://your-spagym-domain.example
 SPAGYM_API_KEY=<same-long-random-secret-configured-as-GUESTFLOW_API_KEY-in-SpaGym>
+ADMIN_PASSWORD=<strong-password-for-the-front-desk-dashboard>
+ADMIN_SESSION_SECRET=<long-random-signing-secret>
 ```
 
 `SPAGYM_API_URL` is the SpaGym origin (no trailing slash and no `/api` suffix). `SPAGYM_API_KEY` must exactly match SpaGym's server-only `GUESTFLOW_API_KEY`. The Express server proxies only the required `/api/spagym/*` actions and keeps the shared secret out of browser bundles. Restart/redeploy after changing either value.
+
+`ADMIN_PASSWORD` protects the GuestFlow front-desk dashboard at `/`. `ADMIN_SESSION_SECRET` signs the eight-hour HttpOnly admin session cookie; if it is omitted, the password is used as the signing secret. Keep both values server-only and never expose them as `VITE_*` variables. The client kiosk at `/welcome` remains public.
 
 Configure SpaGym's Admin SDK credentials and API contract as described in [SpaGym's integration setup](https://github.com/alphacortexai/SpaGymCustomerSystem/blob/main/GUESTFLOW_API.md).
 
