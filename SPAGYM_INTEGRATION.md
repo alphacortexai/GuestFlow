@@ -19,8 +19,8 @@ Configure SpaGym's Admin SDK credentials and API contract as described in [SpaGy
 
 - Existing client lookup searches SpaGym using normalized phone numbers.
 - New registrations are created in SpaGym; duplicate phones return the existing SpaGym client rather than creating another record.
-- A client may have one check-in record per Kampala calendar day. GuestFlow's front-desk activity is refreshed from SpaGym every 30 seconds.
-- Check-outs from GuestFlow and from SpaGym's **Spa check-ins** section update the same Firestore visit document.
+- A client may have one active visit at a time. Repeat active check-ins are deduplicated; manual checkout or the existing 12-hour automatic checkout closes that visit, after which a same-day re-entry creates a new visit record. GuestFlow's front-desk activity is refreshed from SpaGym every 30 seconds.
+- Check-outs from GuestFlow and from SpaGym's **Spa check-ins** section update the same Firestore visit document. Automatic timeout check-outs are also persisted in Firestore.
 - If the SpaGym server or shared key is unavailable, the app displays a connection error and does not fall back to browser storage.
 
 ## Useful endpoints
