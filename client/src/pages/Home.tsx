@@ -7,7 +7,6 @@ import {
   Clock3,
   LogOut,
   Search,
-  ShieldCheck,
   Sparkles,
   UserPlus,
   Users,
@@ -311,7 +310,6 @@ export default function Home() {
             {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><span className="result-label warm">No record found</span><strong>New here? Create their record.</strong><span>Name, birthday and phone — just the essentials.</span></div><button className="text-button" type="button" onClick={openRegistration}>Create record <ArrowRight size={16} /></button></div>}
           </div>
 
-          <div className="tip-card"><div className="tip-icon"><ShieldCheck size={19} /></div><div><strong>Privacy, by default</strong><p>Only the details needed for a quick welcome are collected. Birth year is intentionally left out.</p></div></div>
         </div>
 
         <div className="secondary-column" ref={registrationRef}>
