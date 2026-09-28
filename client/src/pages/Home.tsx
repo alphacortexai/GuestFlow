@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Link } from "wouter";
+import { checkIn as apiCheckIn, checkOut as apiCheckOut, createClient as apiCreateClient, getSummary, SpaGymApiError, SpaGymVisit, lookupClient as apiLookupClient } from "@/lib/spaGymApi";
 
 type Client = {
   id: string;
@@ -21,18 +22,12 @@ type Client = {
   month: string;
   phone: string;
   createdAt: string;
+  birthDay?: number | null;
+  birthMonth?: number | null;
 };
 
-type Visit = {
-  id: string;
-  clientId: string;
-  checkedInAt: string;
-  checkedOutAt?: string;
-};
+type Visit = SpaGymVisit;
 
-const CLIENTS_KEY = "guestflow-clients";
-const VISITS_KEY = "guestflow-visits";
-const CHECKOUT_AFTER_MS = 12 * 60 * 60 * 1000;
 const monthOptions = [
   "January",
   "February",
@@ -62,7 +57,7 @@ const formatPhone = (phone: string) => {
 const formatTime = (iso: string) =>
   new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 const isSameDay = (first: Date, second = new Date()) => first.toDateString() === second.toDateString();
-const isCheckedOut = (visit: Visit, now = Date.now()) => Boolean(visit.checkedOutAt) || now - new Date(visit.checkedInAt).getTime() >= CHECKOUT_AFTER_MS;
+const isCheckedOut = (visit: Visit) => Boolean(visit.checkedOutAt);
 const getTimeGreeting = (date = new Date()) => {
   const hour = date.getHours();
   if (hour < 12) return "Good morning.";
@@ -75,19 +70,13 @@ const todayLabel = new Intl.DateTimeFormat("en", {
   day: "numeric",
 }).format(new Date());
 
-function readStorage<T>(key: string, fallback: T): T {
-  try {
-    const stored = window.localStorage.getItem(key);
-    return stored ? (JSON.parse(stored) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 export default function Home() {
   const [timeGreeting, setTimeGreeting] = useState(() => getTimeGreeting());
-  const [clients, setClients] = useState<Client[]>(() => readStorage<Client[]>(CLIENTS_KEY, []));
-  const [visits, setVisits] = useState<Visit[]>(() => readStorage<Visit[]>(VISITS_KEY, []));
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [clientCount, setClientCount] = useState<number | null>(null);
+  const [visitCount, setVisitCount] = useState(0);
+  const [integrationError, setIntegrationError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [phone, setPhone] = useState("");
   const [search, setSearch] = useState("");
   const [lookupState, setLookupState] = useState<"idle" | "found" | "missing">("idle");
@@ -103,85 +92,98 @@ export default function Home() {
   const [registration, setRegistration] = useState({ name: "", day: "", month: "", phone: "" });
   const registrationRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => window.localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients)), [clients]);
-  useEffect(() => window.localStorage.setItem(VISITS_KEY, JSON.stringify(visits)), [visits]);
-  useEffect(() => {
-    const expireVisits = () => {
-      const now = Date.now();
-      setVisits((current) => {
-        let changed = false;
-        const next = current.map((visit) => {
-          if (!visit.checkedOutAt && now - new Date(visit.checkedInAt).getTime() >= CHECKOUT_AFTER_MS) {
-            changed = true;
-            return { ...visit, checkedOutAt: new Date(new Date(visit.checkedInAt).getTime() + CHECKOUT_AFTER_MS).toISOString() };
-          }
-          return visit;
-        });
-        return changed ? next : current;
-      });
-    };
-    expireVisits();
-    const interval = window.setInterval(expireVisits, 60_000);
-    return () => window.clearInterval(interval);
+  const refreshDashboard = useCallback(async () => {
+    try {
+      const summary = await getSummary();
+      setClientCount(summary.clientCount);
+      setVisitCount(summary.visitCount);
+      setVisits(summary.visits || []);
+      setIntegrationError("");
+    } catch (error) {
+      setIntegrationError(error instanceof Error ? error.message : "Unable to reach SpaGym.");
+    }
   }, []);
+
+  useEffect(() => {
+    refreshDashboard();
+    const interval = window.setInterval(refreshDashboard, 30_000);
+    return () => window.clearInterval(interval);
+  }, [refreshDashboard]);
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(null), 4200);
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  const todayVisits = useMemo(() => {
-    const today = new Date().toDateString();
-    return visits.filter((visit) => new Date(visit.checkedInAt).toDateString() === today);
-  }, [visits]);
-  const activeTodayVisits = useMemo(() => todayVisits.filter((visit) => !isCheckedOut(visit)), [todayVisits]);
-
   const activity = useMemo(() => {
     const query = search.trim().toLowerCase();
     return [...visits]
       .sort((a, b) => +new Date(b.checkedInAt) - +new Date(a.checkedInAt))
-      .map((visit) => ({ visit, client: clients.find((client) => client.id === visit.clientId) }))
-      .filter(({ client }) => client && (!query || client.name.toLowerCase().includes(query) || client.phone.includes(query)))
+      .map((visit) => ({ visit, client: visit }))
+      .filter(({ client }) => !query || client.clientName.toLowerCase().includes(query) || client.phoneNumber.includes(query))
       .slice(0, 8);
-  }, [clients, visits, search]);
+  }, [visits, search]);
 
-  const findClient = () => {
+  const findClient = async () => {
     const normalized = normalizePhone(phone);
     if (normalized.length < 7) {
       setLookupState("missing");
       setActiveClient(null);
       return;
     }
-    const client = clients.find((item) => normalizePhone(item.phone) === normalized);
-    if (client) {
-      setActiveClient(client);
+    setIsSubmitting(true);
+    try {
+      const result = await apiLookupClient(phone);
+      setActiveClient({
+        id: result.id,
+        name: result.name,
+        phone: result.phoneNumber || result.phone,
+        day: result.day,
+        month: result.month,
+        birthDay: result.birthDay,
+        birthMonth: result.birthMonth,
+        createdAt: result.createdAt || "",
+      });
       setLookupState("found");
-    } else {
-      setActiveClient(null);
-      setLookupState("missing");
+    } catch (error) {
+      if (error instanceof SpaGymApiError && error.status === 404) {
+        setActiveClient(null);
+        setLookupState("missing");
+      } else {
+        setNotice({ title: "SpaGym is unavailable", detail: error instanceof Error ? error.message : "Please try again." });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const checkIn = (client: Client) => {
-    if (activeTodayVisits.some((visit) => visit.clientId === client.id)) {
-      setNotice({ title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." });
+  const checkIn = async (client: Client) => {
+    setIsSubmitting(true);
+    try {
+      const result = await apiCheckIn(client.phone);
+      setNotice(result.alreadyCheckedIn
+        ? { title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
+        : { title: `${client.name} is checked in`, detail: "Their visit has been added to SpaGym’s shared register." });
+      await refreshDashboard();
       setPhone("");
       setLookupState("idle");
       setActiveClient(null);
-      return;
+    } catch (error) {
+      setNotice({ title: "Check-in failed", detail: error instanceof Error ? error.message : "Please try again." });
+    } finally {
+      setIsSubmitting(false);
     }
-    const visit: Visit = { id: crypto.randomUUID(), clientId: client.id, checkedInAt: new Date().toISOString() };
-    setVisits((current) => [visit, ...current]);
-    setNotice({ title: `${client.name} is checked in`, detail: "Their visit has been added to today’s register." });
-    setPhone("");
-    setLookupState("idle");
-    setActiveClient(null);
   };
 
-  const checkOut = (visit: Visit, clientName: string) => {
+  const checkOut = async (visit: Visit, clientName: string) => {
     if (isCheckedOut(visit)) return;
-    setVisits((current) => current.map((item) => item.id === visit.id ? { ...item, checkedOutAt: new Date().toISOString() } : item));
-    setNotice({ title: `${clientName} is checked out`, detail: "Their visit has been closed in the register." });
+    try {
+      await apiCheckOut(visit.id);
+      await refreshDashboard();
+      setNotice({ title: `${clientName} is checked out`, detail: "Their departure has been saved to SpaGym’s shared register." });
+    } catch (error) {
+      setNotice({ title: "Check-out failed", detail: error instanceof Error ? error.message : "Please try again." });
+    }
   };
 
   const openRegistration = () => {
@@ -190,31 +192,25 @@ export default function Home() {
     window.setTimeout(() => registrationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
   };
 
-  const registerClient = (event: React.FormEvent) => {
+  const registerClient = async (event: React.FormEvent) => {
     event.preventDefault();
     const normalized = normalizePhone(registration.phone);
     if (!registration.name.trim() || !registration.day || !registration.month || normalized.length < 7) return;
-    const existing = clients.find((client) => normalizePhone(client.phone) === normalized);
-    const client = existing ?? {
-      id: crypto.randomUUID(),
-      name: registration.name.trim(),
-      day: registration.day,
-      month: registration.month,
-      phone: registration.phone,
-      createdAt: new Date().toISOString(),
-    };
-    if (!existing) setClients((current) => [client, ...current]);
-    if (activeTodayVisits.some((visit) => visit.clientId === client.id)) {
-      setNotice({ title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." });
+    setIsSubmitting(true);
+    try {
+      const result = await apiCreateClient({ name: registration.name.trim(), phone: registration.phone, day: registration.day, month: registration.month });
+      const signIn = await apiCheckIn(registration.phone);
+      await refreshDashboard();
+      setNotice(signIn.alreadyCheckedIn
+        ? { title: `${result.client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
+        : { title: result.created ? "New client registered" : `${result.client.name} is checked in`, detail: "The client record and visit are saved in SpaGym." });
       setRegistration({ name: "", day: "", month: "", phone: "" });
       setShowRegistration(false);
-      return;
+    } catch (error) {
+      setNotice({ title: "Registration failed", detail: error instanceof Error ? error.message : "Please try again." });
+    } finally {
+      setIsSubmitting(false);
     }
-    const visit: Visit = { id: crypto.randomUUID(), clientId: client.id, checkedInAt: new Date().toISOString() };
-    setVisits((current) => [visit, ...current]);
-    setNotice({ title: existing ? `${client.name} is checked in` : "New client registered", detail: "They have also been signed in for today." });
-    setRegistration({ name: "", day: "", month: "", phone: "" });
-    setShowRegistration(false);
   };
 
   return (
@@ -229,6 +225,8 @@ export default function Home() {
         <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href="/welcome">Client screen ↗</Link></div>
       </header>
 
+      {integrationError && <div role="alert" className="container mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">SpaGym is not connected: {integrationError}. Client and visit data are not being stored on this device.</div>}
+
       <section className="hero container">
         <div>
           <p className="eyebrow">DIGITAL REGISTRATION BOOK <span>•</span> TODAY</p>
@@ -236,8 +234,8 @@ export default function Home() {
           <p className="hero-copy">Check in a returning client in seconds, or add a new client to your register without the paper chase.</p>
         </div>
         <div className="stat-strip">
-          <div className="stat-card"><span className="stat-icon mint"><Check size={17} /></span><div><strong>{todayVisits.length}</strong><span>checked in today</span></div></div>
-          <div className="stat-card"><span className="stat-icon peach"><Users size={17} /></span><div><strong>{clients.length}</strong><span>registered clients</span></div></div>
+          <div className="stat-card"><span className="stat-icon mint"><Check size={17} /></span><div><strong>{visitCount}</strong><span>checked in today</span></div></div>
+          <div className="stat-card"><span className="stat-icon peach"><Users size={17} /></span><div><strong>{clientCount ?? "—"}</strong><span>registered clients</span></div></div>
         </div>
       </section>
 
@@ -249,9 +247,9 @@ export default function Home() {
             <div className="phone-entry">
               <label htmlFor="phone">Phone number</label>
               <div className={`phone-input-wrap ${lookupState}`}><Search size={22} /><input id="phone" inputMode="tel" autoComplete="tel" placeholder="+256 7XX XXX XXX" value={phone} onChange={(event) => { setPhone(event.target.value); setLookupState("idle"); }} onKeyDown={(event) => event.key === "Enter" && findClient()} /><button className="clear-button" type="button" aria-label="Clear phone number" onClick={() => { setPhone(""); setLookupState("idle"); }}>{phone && <X size={18} />}</button></div>
-              <button className="primary-button full" type="button" onClick={findClient}><span>Check phone number</span><ArrowRight size={18} /></button>
+              <button className="primary-button full" type="button" onClick={findClient} disabled={isSubmitting}><span>{isSubmitting ? "Checking…" : "Check phone number"}</span><ArrowRight size={18} /></button>
             </div>
-            {lookupState === "found" && activeClient && <div className="result-card found-card"><div className="avatar avatar-coral">{activeClient.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="result-copy"><span className="result-label"><span className="result-dot" /> Client found</span><strong>{activeClient.name}</strong><span>{formatPhone(activeClient.phone)} <span className="middot">•</span> {activeClient.day} {activeClient.month}</span></div><button className="checkin-button" type="button" onClick={() => checkIn(activeClient)}><Check size={17} /> Sign in</button></div>}
+            {lookupState === "found" && activeClient && <div className="result-card found-card"><div className="avatar avatar-coral">{activeClient.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="result-copy"><span className="result-label"><span className="result-dot" /> Client found</span><strong>{activeClient.name}</strong><span>{formatPhone(activeClient.phone)} <span className="middot">•</span> {activeClient.day} {activeClient.month}</span></div><button className="checkin-button" type="button" onClick={() => checkIn(activeClient)} disabled={isSubmitting}><Check size={17} /> {isSubmitting ? "Saving…" : "Sign in"}</button></div>}
             {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><span className="result-label warm">No record found</span><strong>New here? Create their record.</strong><span>Name, birthday and phone — just the essentials.</span></div><button className="text-button" type="button" onClick={openRegistration}>Create record <ArrowRight size={16} /></button></div>}
           </div>
 
@@ -266,14 +264,14 @@ export default function Home() {
               <div className="field full-field"><label htmlFor="name">Full name</label><input id="name" placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></div>
               <div className="field-group"><div className="field"><label htmlFor="day">Birthday · day</label><div className="select-wrap"><select id="day" value={registration.day} onChange={(event) => setRegistration({ ...registration, day: event.target.value })} required><option value="">Day</option>{Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}</option>)}</select><ChevronDown size={17} /></div></div><div className="field"><label htmlFor="month">Month</label><div className="select-wrap"><select id="month" value={registration.month} onChange={(event) => setRegistration({ ...registration, month: event.target.value })} required><option value="">Month</option>{monthOptions.map((month) => <option key={month} value={month}>{month}</option>)}</select><ChevronDown size={17} /></div></div></div>
               <div className="field full-field"><label htmlFor="new-phone">Phone number</label><input id="new-phone" inputMode="tel" placeholder="+256 7XX XXX XXX" value={registration.phone} onChange={(event) => setRegistration({ ...registration, phone: event.target.value })} required /></div>
-              <button className="primary-button coral-button full" type="submit"><UserPlus size={18} /><span>Register & sign in</span><ArrowRight size={18} /></button>
+              <button className="primary-button coral-button full" type="submit" disabled={isSubmitting}><UserPlus size={18} /><span>{isSubmitting ? "Saving…" : "Register & sign in"}</span><ArrowRight size={18} /></button>
               <p className="form-note">By continuing, you confirm this client has agreed to be added to the register.</p>
             </form>
           </div>
         </div>
       </section>
 
-      <section className="activity-section container"><div className="activity-heading"><div><span className="section-kicker">LIVE REGISTER</span><h2>Today’s activity <span className="activity-count">{todayVisits.length}</span></h2><p className="register-hint">Clients stay checked in until staff checks them out or 12 hours pass.</p></div><div className="activity-search"><Search size={17} /><input placeholder="Search name or phone" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div><div className="activity-list">{activity.length > 0 ? activity.map(({ visit, client }) => { if (!client) return null; const newToday = isSameDay(new Date(client.createdAt)); const checkedOut = isCheckedOut(visit); return <div className={`activity-row ${checkedOut ? "checked-out-row" : ""}`} key={visit.id}><div className="avatar avatar-lilac">{client.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="activity-person"><strong>{client.name}</strong><span>{formatPhone(client.phone)}</span></div><div className="activity-birthday"><span>Birthday</span><strong>{client.day} {client.month}</strong></div><div className="activity-time"><Clock3 size={16} /> {formatTime(visit.checkedInAt)}</div><span className={`signed-pill ${newToday ? "new-today-pill" : ""} ${checkedOut ? "checked-out-pill" : ""}`}><Check size={13} /> {checkedOut ? "Checked out" : newToday ? "New today" : "Returning"}</span>{!checkedOut && <button className="checkout-button" type="button" onClick={() => checkOut(visit, client.name)}><LogOut size={14} /> Check out</button>}</div>; }) : <div className="empty-activity"><div className="empty-icon"><Clock3 size={20} /></div><div><strong>No visits recorded yet today</strong><span>Check in your first client above and their visit will appear here.</span></div></div>}</div></section>
+      <section className="activity-section container"><div className="activity-heading"><div><span className="section-kicker">LIVE REGISTER</span><h2>Today’s activity <span className="activity-count">{visitCount}</span></h2><p className="register-hint">Clients stay checked in until staff records their check-out in GuestFlow or SpaGym.</p></div><div className="activity-search"><Search size={17} /><input placeholder="Search name or phone" value={search} onChange={(event) => setSearch(event.target.value)} /></div></div><div className="activity-list">{activity.length > 0 ? activity.map(({ visit }) => { const newToday = isSameDay(new Date(visit.clientCreatedAt || visit.checkedInAt)); const checkedOut = isCheckedOut(visit); return <div className={`activity-row ${checkedOut ? "checked-out-row" : ""}`} key={visit.id}><div className="avatar avatar-lilac">{visit.clientName.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="activity-person"><strong>{visit.clientName}</strong><span>{formatPhone(visit.phoneNumber)}</span></div><div className="activity-birthday"><span>Birthday</span><strong>{visit.birthDay} {monthOptions[(visit.birthMonth || 1) - 1]}</strong></div><div className="activity-time"><Clock3 size={16} /> {formatTime(visit.checkedInAt)}</div><span className={`signed-pill ${newToday ? "new-today-pill" : ""} ${checkedOut ? "checked-out-pill" : ""}`}><Check size={13} /> {checkedOut ? "Checked out" : newToday ? "New today" : "Returning"}</span>{!checkedOut && <button className="checkout-button" type="button" onClick={() => checkOut(visit, visit.clientName)}><LogOut size={14} /> Check out</button>}</div>; }) : <div className="empty-activity"><div className="empty-icon"><Clock3 size={20} /></div><div><strong>{integrationError ? "SpaGym register is unavailable" : "No visits recorded yet today"}</strong><span>{integrationError ? "Reconnect to SpaGym to view the shared activity register." : "Check in your first client above and their visit will appear here."}</span></div></div>}</div></section>
 
       <footer className="footer container"><span>guestflow <i>•</i> a calmer way to welcome people</span><span>Tablet mode <span className="toggle-on"><span /></span></span></footer>
       {notice && <div className="toast"><div className="toast-check"><Check size={17} /></div><div><strong>{notice.title}</strong><span>{notice.detail}</span></div><button type="button" aria-label="Dismiss notification" onClick={() => setNotice(null)}><X size={16} /></button></div>}
