@@ -86,6 +86,7 @@ export default function Home() {
   const [lookupState, setLookupState] = useState<"idle" | "found" | "missing">("idle");
   const [activeClient, setActiveClient] = useState<Client | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"today" | "branches" | "client">("today");
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
   const activeBranchName = branches.find((branch) => branch.id === branchId)?.name || "All branches";
 
@@ -218,6 +219,7 @@ export default function Home() {
   const openRegistration = () => {
     setRegistration((current) => ({ ...current, phone: phone || current.phone }));
     setShowRegistration(true);
+    setActiveWorkspaceTab("client");
     window.setTimeout(() => registrationRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
   };
 
@@ -279,14 +281,20 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="branch-admin container" aria-labelledby="branch-admin-title">
+      <nav className="workspace-tabs container" aria-label="GuestFlow workspace sections">
+        <button type="button" className={activeWorkspaceTab === "today" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("today")} aria-selected={activeWorkspaceTab === "today"}>Today's activity</button>
+        <button type="button" className={activeWorkspaceTab === "branches" ? "is-active" : ""} onClick={() => setActiveWorkspaceTab("branches")} aria-selected={activeWorkspaceTab === "branches"}>Branch management</button>
+        <button type="button" className={activeWorkspaceTab === "client" ? "is-active" : ""} onClick={() => { setActiveWorkspaceTab("client"); setShowRegistration(true); }}>Client registration</button>
+      </nav>
+
+      {activeWorkspaceTab === "branches" && <section className="branch-admin container" aria-labelledby="branch-admin-title">
         <div className="branch-admin-heading">
           <div><span className="section-kicker">BRANCH MANAGEMENT</span><h2 id="branch-admin-title">Branch links &amp; register</h2><p>Choose a branch to filter today’s activity and create branch-specific client check-in links.</p></div>
           <label className="branch-filter"><span>View branch</span><select value={branchId} onChange={(event) => setBranchId(event.target.value)}><option value="">All branches</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label>
         </div>
         {branchError ? <div className="branch-error" role="alert">Could not load branch links from SpaGym. Deploy the updated SpaGym integration API and check the GuestFlow connection. ({branchError})</div> : branches.length === 0 ? <div className="branch-empty">No SpaGym branches were returned. Add branches in SpaGym, then refresh this page.</div> : <div className="branch-link-grid">{branches.map((branch) => <article className={`branch-link-card ${branch.id === branchId ? "is-selected" : ""}`} key={branch.id}><div><span className="branch-link-label">CLIENT CHECK-IN</span><h3>{branch.name}</h3><a href={branchWelcomeUrl(branch.id)} target="_blank" rel="noreferrer">Open kiosk screen <ArrowRight size={14} /></a></div><button type="button" onClick={() => copyBranchLink(branch)} aria-label={`Copy ${branch.name} client link`}><Copy size={15} /><span>Copy link</span></button></article>)}</div>}
         <p className="branch-filter-note">Showing: <strong>{activeBranchName}</strong>. New client records and visits created from a branch link are tagged to that branch.</p>
-      </section>
+      </section>}
 
       <section className="workspace container">
         <div className="primary-column">
@@ -306,7 +314,7 @@ export default function Home() {
         </div>
 
         <div className="secondary-column" ref={registrationRef}>
-          <div className={`panel registration-panel ${showRegistration ? "is-open" : ""}`}>
+          <div className={`panel registration-panel ${showRegistration && activeWorkspaceTab === "client" ? "is-open" : ""}`}>
             <div className="panel-heading"><div><span className="section-kicker coral">NEW CLIENT</span><h2>Start a new record</h2></div><div className="step-badge coral-badge">02 <span>/</span> 02</div></div>
             <p className="panel-description">A few details now makes every next visit feel effortless. {branchId ? `This record will be assigned to ${activeBranchName}.` : branches.length > 1 ? "Select a branch above before registering a new client." : ""}</p>
             <form onSubmit={registerClient} className="registration-form">

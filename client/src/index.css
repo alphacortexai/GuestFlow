@@ -264,3 +264,37 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 .checked-out-pill { color: #806c68 !important; background: #f1e9e3 !important; }
 @media (max-width: 900px) { .checkout-button { margin-left: auto; } }
 @media (max-width: 620px) { .register-hint { max-width: 250px; }.checkout-button { padding: 7px 9px; font-size: 10px; }.activity-row { gap: 8px; } }
+
+/* Tablet workspace: keep the daily register visible and reveal admin tools on demand. */
+.workspace-tabs { display: flex; gap: 8px; margin-top: 4px; margin-bottom: 22px; padding: 5px; border: 1px solid #f1dfd2; border-radius: 14px; background: rgba(255,255,255,.78); box-shadow: 0 8px 22px rgba(182,111,62,.045); }
+.workspace-tabs button { flex: 1; min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: #927c70; font-size: 12px; font-weight: 700; padding: 0 14px; }
+.workspace-tabs button:hover { background: #fff4e9; color: var(--coral); }
+.workspace-tabs button.is-active { background: var(--coral); color: white; box-shadow: 0 5px 14px rgba(255,90,10,.18); }
+.branch-admin { margin-bottom: 24px; }
+.registration-panel.is-open { margin-top: 0; }
+@media (min-width: 700px) and (max-width: 1200px) {
+  .container, .topbar { width: min(100% - 56px, 1040px); }
+  .hero { padding-top: 42px; padding-bottom: 28px; }
+  .hero h1 { font-size: clamp(42px, 5vw, 58px); }
+  .workspace { max-width: 1040px; }
+  .workspace-tabs { max-width: 1040px; }
+  .activity-section { margin-top: 30px; }
+  .activity-row { min-height: 74px; }
+  .branch-link-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .client-screen { padding: 28px 42px; }
+  .client-card { width: min(100%, 760px); padding: 34px 42px 30px; }
+  .client-card-register { max-width: 920px; }
+  .client-flow-step > p { max-width: 560px; }
+  .apple-calendar { width: min(100%, 680px); margin: 0 auto; padding: 18px 22px 16px; }
+  .calendar-picker-heading { margin-bottom: 16px; }
+  .month-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .month-grid button { height: 48px; font-size: 12px; }
+  .calendar-grid button, .calendar-grid span { min-height: 44px; font-size: 13px; }
+  .calendar-weekdays span { font-size: 10px; }
+  .calendar-toolbar button { width: 34px; height: 34px; }
+  .calendar-selection { min-height: 36px; margin-top: 14px; padding-top: 12px; font-size: 11px; }
+}
+@media (max-width: 620px) {
+  .workspace-tabs { width: calc(100% - 32px); overflow-x: auto; }
+  .workspace-tabs button { flex: 0 0 auto; min-width: 132px; padding: 0 12px; font-size: 11px; }
+}
