@@ -9,13 +9,16 @@ const normalizePhone = (phone: string) => {
   if (digits.startsWith("0")) return `256${digits.slice(1)}`;
   return digits;
 };
+const isValidPhone = (phone: string) => /^256\d{9}$/.test(normalizePhone(phone));
 export default function ClientWelcome() {
   const branchId = useMemo(() => new URLSearchParams(window.location.search).get("branchId") || "", []);
   const [branchName, setBranchName] = useState("");
   const [mode, setMode] = useState<"check-in" | "register" | "success">("check-in");
   const [registerStep, setRegisterStep] = useState(1);
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [registration, setRegistration] = useState({ name: "", day: "", month: "", phone: "" });
+  const [registrationPhoneError, setRegistrationPhoneError] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarView, setCalendarView] = useState<"month" | "day">("month");
   const [notFound, setNotFound] = useState(false);
@@ -45,17 +48,20 @@ export default function ClientWelcome() {
   useEffect(() => {
     if (mode !== "success") return;
     const timer = window.setTimeout(() => {
-      setMode("check-in"); setRegisterStep(1); setPhone("");
+      setMode("check-in"); setRegisterStep(1); setPhone(""); setPhoneError("");
       setRegistration({ name: "", day: "", month: "", phone: "" });
-      setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); setRequestError(""); setProfileSaved(false);
+      setRegistrationPhoneError(""); setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); setRequestError(""); setProfileSaved(false);
     }, 5000);
     return () => window.clearTimeout(timer);
   }, [mode]);
 
   const checkIn = async (event: React.FormEvent) => {
     event.preventDefault();
-    const digits = normalizePhone(phone);
-    if (digits.length < 7) return;
+    if (!isValidPhone(phone)) {
+      setPhoneError("Enter a valid number, e.g. +256 7XX XXX XXX.");
+      return;
+    }
+    setPhoneError("");
     setIsSubmitting(true);
     setRequestError("");
     setProfileSaved(false);
@@ -75,8 +81,12 @@ export default function ClientWelcome() {
 
   const register = async (event: React.FormEvent) => {
     event.preventDefault();
-    const digits = normalizePhone(registration.phone);
-    if (!registration.name.trim() || !registration.day || !registration.month || digits.length < 7) return;
+    if (!isValidPhone(registration.phone)) {
+      setRegistrationPhoneError("Enter a valid number, e.g. +256 7XX XXX XXX.");
+      return;
+    }
+    setRegistrationPhoneError("");
+    if (!registration.name.trim() || !registration.day || !registration.month) return;
     setIsSubmitting(true);
     setRequestError("");
     setProfileSaved(false);
@@ -100,7 +110,7 @@ export default function ClientWelcome() {
     }
   };
 
-  const reset = () => { setMode("check-in"); setRegisterStep(1); setPhone(""); setRegistration({ name: "", day: "", month: "", phone: "" }); setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); setProfileSaved(false); };
+  const reset = () => { setMode("check-in"); setRegisterStep(1); setPhone(""); setPhoneError(""); setRegistration({ name: "", day: "", month: "", phone: "" }); setRegistrationPhoneError(""); setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); setProfileSaved(false); };
   const goBack = () => { if (mode === "register" && registerStep > 1) setRegisterStep((step) => step - 1); else setMode("check-in"); };
   const chooseDate = (day: number) => setRegistration((current) => ({ ...current, day: String(day), month: monthNames[calendarMonth] }));
   const chooseMonth = (month: number) => { setCalendarMonth(month); setCalendarView("day"); };
@@ -120,9 +130,9 @@ export default function ClientWelcome() {
         {mode === "success" ? (
           <div className="client-success"><div className="success-mark"><Check size={28} /></div><span className="client-eyebrow">{alreadyCheckedIn ? "ALREADY CHECKED IN" : "YOU’RE ALL SET"}</span><h1>{alreadyCheckedIn ? <>You’re already<br /><em>checked in.</em></> : <>Welcome, <em>{clientName.split(" ")[0]}.</em></>}</h1><p>{alreadyCheckedIn ? "This visit was already recorded today. Please take a seat and we’ll be with you shortly." : "Your visit has been recorded. Please take a seat and we’ll be with you shortly."}</p></div>
         ) : mode === "check-in" ? (
-          <div className="client-flow-step"><h1>Digital<br /><em>Registration Book</em></h1><p>Please enter your phone number below so we know you’re here.</p><form onSubmit={checkIn} className="client-form"><label htmlFor="client-phone">Phone number</label><input id="client-phone" inputMode="tel" autoComplete="tel" autoFocus placeholder="+256 7XX XXX XXX" value={phone} onChange={(event) => { setPhone(event.target.value); setNotFound(false); setRequestError(""); }} /><button className="client-primary-button" type="submit" disabled={isSubmitting}><span>{isSubmitting ? "Checking in…" : "Please check in"}</span><ArrowRight size={17} /></button></form>{notFound && <div className="client-not-found"><div className="not-found-icon"><UserPlus size={18} /></div><div className="not-found-copy"><strong>We don’t see you yet</strong><span>New to Soothing Spa? Create your client record in a few quick steps.</span></div><button className="client-register-button" type="button" onClick={() => { setRegistration((current) => ({ ...current, phone })); setMode("register"); setRegisterStep(1); setRequestError(""); }}><span>Register as a new client</span><ArrowRight size={15} /></button></div>}<div className="client-privacy">Your number is used only to find your SpaGym client record.</div></div>
+          <div className="client-flow-step"><h1>Digital<br /><em>Registration Book</em></h1><p>Please enter your phone number below so we know you’re here.</p><form onSubmit={checkIn} className="client-form"><label htmlFor="client-phone">Phone number</label><input id="client-phone" type="tel" inputMode="tel" autoComplete="tel" autoFocus pattern="(?:\+?256|0)[0-9\s()-]{9,14}" aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? "client-phone-error" : undefined} placeholder="+256 7XX XXX XXX" value={phone} onChange={(event) => { setPhone(event.target.value); setPhoneError(""); setNotFound(false); setRequestError(""); }} /><button className="client-primary-button" type="submit" disabled={isSubmitting}><span>{isSubmitting ? "Checking in…" : "Please check in"}</span><ArrowRight size={17} /></button>{phoneError && <p id="client-phone-error" className="phone-validation" role="alert">{phoneError}</p>}</form>{notFound && <div className="client-not-found not-found-card"><div className="not-found-copy"><strong>New client?</strong><span>Register in a few steps.</span></div><button className="client-register-button" type="button" onClick={() => { setRegistration((current) => ({ ...current, phone })); setMode("register"); setRegisterStep(1); setRequestError(""); }}><span>Register now</span><ArrowRight size={15} /></button></div>}<div className="client-privacy">Your number is used only to find your SpaGym client record.</div></div>
         ) : (
-          <div className="client-flow-step"><div className="client-step-header"><button className="client-back" type="button" onClick={goBack}><ArrowLeft size={14} /> Back</button><span className="client-progress">{registerStep} <i>/</i> 3</span></div><div className="client-progress-bar"><span style={{ width: `${(registerStep / 3) * 100}%` }} /></div><div className="client-icon"><UserPlus size={21} /></div><span className="client-eyebrow">NEW CLIENT</span><h1>{registerStep === 1 ? <>What’s your<br /><em>name?</em></> : registerStep === 2 ? <>When’s your<br /><em>birthday?</em></> : <>What’s your<br /><em>phone number?</em></>}</h1><p>{registerStep === 1 ? "Let’s start with the basics." : registerStep === 2 ? "Choose a month, then select a day." : "We’ll use this to make your next visit quick."}</p><form onSubmit={registrationNext} className="client-form client-registration-form">{registerStep === 1 && <><label htmlFor="client-name">Full name</label><input id="client-name" autoFocus placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></>}{registerStep === 2 && <div className="apple-calendar">{calendarView === "month" ? <><div className="calendar-picker-heading"><CalendarDays size={15} /><strong>Select a month</strong></div><div className="month-grid">{monthNames.map((month, index) => <button type="button" key={month} className={registration.month === month ? "selected-month" : ""} onClick={() => chooseMonth(index)}>{month.slice(0, 3)}</button>)}</div></> : <><div className="calendar-toolbar"><button type="button" aria-label="Choose another month" onClick={() => setCalendarView("month")}><ChevronLeft size={17} /></button><strong>{monthNames[calendarMonth]}</strong><button type="button" aria-label="Next month" onClick={() => setCalendarMonth((month) => Math.min(11, month + 1))} disabled={calendarMonth === 11}><ChevronRight size={17} /></button></div><div className="calendar-weekdays">{weekdayNames.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button type="button" key={day} className={registration.day === String(day) && registration.month === monthNames[calendarMonth] ? "selected-day" : ""} onClick={() => chooseDate(day)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-selection"><CalendarDays size={15} /><span>{registration.day && registration.month ? `${registration.day} ${registration.month}` : "Select your birthday"}</span></div></>}</div>}{registerStep === 3 && <><label htmlFor="client-new-phone">Phone number</label><input id="client-new-phone" inputMode="tel" autoComplete="tel" autoFocus placeholder="+256 7XX XXX XXX" value={registration.phone} onChange={(event) => { setRegistration({ ...registration, phone: event.target.value }); setRequestError(""); }} required /></>}<button className="client-primary-button" type="submit" disabled={isSubmitting}><span>{isSubmitting ? "Saving…" : registerStep === 3 ? "Register & check in" : "Continue"}</span><ArrowRight size={17} /></button></form><div className="client-privacy">Your details are used only for your client record.</div></div>
+          <div className="client-flow-step"><div className="client-step-header"><button className="client-back" type="button" onClick={goBack}><ArrowLeft size={14} /> Back</button><span className="client-progress">{registerStep} <i>/</i> 3</span></div><div className="client-progress-bar"><span style={{ width: `${(registerStep / 3) * 100}%` }} /></div><div className="client-icon"><UserPlus size={21} /></div><span className="client-eyebrow">NEW CLIENT</span><h1>{registerStep === 1 ? <>What’s your<br /><em>name?</em></> : registerStep === 2 ? <>When’s your<br /><em>birthday?</em></> : <>What’s your<br /><em>phone number?</em></>}</h1><p>{registerStep === 1 ? "Let’s start with the basics." : registerStep === 2 ? "Choose a month, then select a day." : "We’ll use this to make your next visit quick."}</p><form onSubmit={registrationNext} className="client-form client-registration-form">{registerStep === 1 && <><label htmlFor="client-name">Full name</label><input id="client-name" autoFocus placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></>}{registerStep === 2 && <div className="apple-calendar">{calendarView === "month" ? <><div className="calendar-picker-heading"><CalendarDays size={15} /><strong>Select a month</strong></div><div className="month-grid">{monthNames.map((month, index) => <button type="button" key={month} className={registration.month === month ? "selected-month" : ""} onClick={() => chooseMonth(index)}>{month.slice(0, 3)}</button>)}</div></> : <><div className="calendar-toolbar"><button type="button" aria-label="Choose another month" onClick={() => setCalendarView("month")}><ChevronLeft size={17} /></button><strong>{monthNames[calendarMonth]}</strong><button type="button" aria-label="Next month" onClick={() => setCalendarMonth((month) => Math.min(11, month + 1))} disabled={calendarMonth === 11}><ChevronRight size={17} /></button></div><div className="calendar-weekdays">{weekdayNames.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendar-grid">{calendarDays.map((day, index) => day ? <button type="button" key={day} className={registration.day === String(day) && registration.month === monthNames[calendarMonth] ? "selected-day" : ""} onClick={() => chooseDate(day)}>{day}</button> : <span key={`blank-${index}`} />)}</div><div className="calendar-selection"><CalendarDays size={15} /><span>{registration.day && registration.month ? `${registration.day} ${registration.month}` : "Select your birthday"}</span></div></>}</div>}{registerStep === 3 && <><label htmlFor="client-new-phone">Phone number</label><input id="client-new-phone" type="tel" inputMode="tel" autoComplete="tel" autoFocus pattern="(?:\+?256|0)[0-9\s()-]{9,14}" aria-invalid={Boolean(registrationPhoneError)} aria-describedby={registrationPhoneError ? "client-new-phone-error" : undefined} placeholder="+256 7XX XXX XXX" value={registration.phone} onChange={(event) => { setRegistration({ ...registration, phone: event.target.value }); setRegistrationPhoneError(""); setRequestError(""); }} required /></>}{registrationPhoneError && <p id="client-new-phone-error" className="phone-validation" role="alert">{registrationPhoneError}</p>}<button className="client-primary-button" type="submit" disabled={isSubmitting}><span>{isSubmitting ? "Saving…" : registerStep === 3 ? "Register & check in" : "Continue"}</span><ArrowRight size={17} /></button></form><div className="client-privacy">Your details are used only for your client record.</div></div>
         )}
       </section>
       <div className="client-footer">A simple welcome, made easier.</div>

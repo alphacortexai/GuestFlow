@@ -49,6 +49,7 @@ const normalizePhone = (phone: string) => {
   if (digits.startsWith("0")) return `256${digits.slice(1)}`;
   return digits;
 };
+const isValidPhone = (phone: string) => /^256\d{9}$/.test(normalizePhone(phone));
 const formatPhone = (phone: string) => {
   const digits = normalizePhone(phone);
   if (digits.length === 12 && digits.startsWith("256")) return `+256 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
@@ -81,6 +82,7 @@ export default function Home() {
   const [integrationError, setIntegrationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [search, setSearch] = useState("");
   const [lookupState, setLookupState] = useState<"idle" | "found" | "missing">("idle");
   const [activeClient, setActiveClient] = useState<Client | null>(null);
@@ -95,6 +97,7 @@ export default function Home() {
     return () => window.clearInterval(interval);
   }, []);
   const [registration, setRegistration] = useState({ name: "", day: "", month: "", phone: "" });
+  const [registrationPhoneError, setRegistrationPhoneError] = useState("");
   const registrationRef = useRef<HTMLDivElement>(null);
 
   const refreshDashboard = useCallback(async () => {
@@ -154,12 +157,13 @@ export default function Home() {
   };
 
   const findClient = async () => {
-    const normalized = normalizePhone(phone);
-    if (normalized.length < 7) {
-      setLookupState("missing");
+    if (!isValidPhone(phone)) {
+      setPhoneError("Enter a valid number, e.g. +256 7XX XXX XXX.");
+      setLookupState("idle");
       setActiveClient(null);
       return;
     }
+    setPhoneError("");
     setIsSubmitting(true);
     try {
       const result = await apiLookupClient(phone);
@@ -228,8 +232,12 @@ export default function Home() {
       setNotice({ title: "Choose a branch first", detail: "Select the correct branch above so the client is saved in the right SpaGym branch." });
       return;
     }
-    const normalized = normalizePhone(registration.phone);
-    if (!registration.name.trim() || !registration.day || !registration.month || normalized.length < 7) return;
+    if (!isValidPhone(registration.phone)) {
+      setRegistrationPhoneError("Enter a valid number, e.g. +256 7XX XXX XXX.");
+      return;
+    }
+    setRegistrationPhoneError("");
+    if (!registration.name.trim() || !registration.day || !registration.month) return;
     setIsSubmitting(true);
     let savedClientName = "";
     try {
@@ -303,11 +311,12 @@ export default function Home() {
             <p className="panel-description">Enter the phone number from their client record to sign them in.</p>
             <div className="phone-entry">
               <label htmlFor="phone">Phone number</label>
-              <div className={`phone-input-wrap ${lookupState}`}><Search size={22} /><input id="phone" inputMode="tel" autoComplete="tel" placeholder="+256 7XX XXX XXX" value={phone} onChange={(event) => { setPhone(event.target.value); setLookupState("idle"); }} onKeyDown={(event) => event.key === "Enter" && findClient()} /><button className="clear-button" type="button" aria-label="Clear phone number" onClick={() => { setPhone(""); setLookupState("idle"); }}>{phone && <X size={18} />}</button></div>
+              <div className={`phone-input-wrap ${lookupState} ${phoneError ? "has-error" : ""}`}><Search size={22} /><input id="phone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+?256|0)[0-9\s()-]{9,14}" aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? "phone-error" : undefined} placeholder="+256 7XX XXX XXX" value={phone} onChange={(event) => { setPhone(event.target.value); setPhoneError(""); setLookupState("idle"); }} onKeyDown={(event) => event.key === "Enter" && findClient()} /><button className="clear-button" type="button" aria-label="Clear phone number" onClick={() => { setPhone(""); setPhoneError(""); setLookupState("idle"); }}>{phone && <X size={18} />}</button></div>
+              {phoneError && <p id="phone-error" className="phone-error" role="alert">{phoneError}</p>}
               <button className="primary-button full" type="button" onClick={findClient} disabled={isSubmitting}><span>{isSubmitting ? "Checking…" : "Check phone number"}</span><ArrowRight size={18} /></button>
             </div>
             {lookupState === "found" && activeClient && <div className="result-card found-card"><div className="avatar avatar-coral">{activeClient.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</div><div className="result-copy"><span className="result-label"><span className="result-dot" /> Client found</span><strong>{activeClient.name}</strong><span>{formatPhone(activeClient.phone)} <span className="middot">•</span> {activeClient.day} {activeClient.month}</span></div><button className="checkin-button" type="button" onClick={() => checkIn(activeClient)} disabled={isSubmitting}><Check size={17} /> {isSubmitting ? "Saving…" : "Sign in"}</button></div>}
-            {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><span className="result-label warm">No record found</span><strong>New here? Create their record.</strong><span>Name, birthday and phone — just the essentials.</span></div><button className="text-button" type="button" onClick={openRegistration}>Create record <ArrowRight size={16} /></button></div>}
+            {lookupState === "missing" && <div className="result-card missing-card"><div className="missing-icon"><UserPlus size={19} /></div><div className="result-copy"><strong>New client?</strong><span>Add their details to register them now.</span></div><button className="text-button" type="button" onClick={openRegistration}>Add client <ArrowRight size={16} /></button></div>}
           </div>
 
         </div>
@@ -319,7 +328,7 @@ export default function Home() {
             <form onSubmit={registerClient} className="registration-form">
               <div className="field full-field"><label htmlFor="name">Full name</label><input id="name" placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></div>
               <div className="field-group"><div className="field"><label htmlFor="day">Birthday · day</label><div className="select-wrap"><select id="day" value={registration.day} onChange={(event) => setRegistration({ ...registration, day: event.target.value })} required><option value="">Day</option>{Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}</option>)}</select><ChevronDown size={17} /></div></div><div className="field"><label htmlFor="month">Month</label><div className="select-wrap"><select id="month" value={registration.month} onChange={(event) => setRegistration({ ...registration, month: event.target.value })} required><option value="">Month</option>{monthOptions.map((month) => <option key={month} value={month}>{month}</option>)}</select><ChevronDown size={17} /></div></div></div>
-              <div className="field full-field"><label htmlFor="new-phone">Phone number</label><input id="new-phone" inputMode="tel" placeholder="+256 7XX XXX XXX" value={registration.phone} onChange={(event) => setRegistration({ ...registration, phone: event.target.value })} required /></div>
+              <div className="field full-field"><label htmlFor="new-phone">Phone number</label><input id="new-phone" type="tel" inputMode="tel" pattern="(?:\+?256|0)[0-9\s()-]{9,14}" aria-invalid={Boolean(registrationPhoneError)} aria-describedby={registrationPhoneError ? "new-phone-error" : undefined} placeholder="+256 7XX XXX XXX" value={registration.phone} onChange={(event) => { setRegistration({ ...registration, phone: event.target.value }); setRegistrationPhoneError(""); }} required />{registrationPhoneError && <p id="new-phone-error" className="phone-error" role="alert">{registrationPhoneError}</p>}</div>
               <button className="primary-button coral-button full" type="submit" disabled={isSubmitting}><UserPlus size={18} /><span>{isSubmitting ? "Saving…" : "Register & sign in"}</span><ArrowRight size={18} /></button>
               <p className="form-note">By continuing, you confirm this client has agreed to be added to the register.</p>
             </form>

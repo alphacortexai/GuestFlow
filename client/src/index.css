@@ -309,3 +309,21 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 @media (max-width: 620px) {
   .workspace-tabs { top: 68px; }
 }
+
+/* Practical phone validation and readable new-client prompt. */
+.phone-input-wrap.has-error { border-color: #d7835e; box-shadow: 0 0 0 4px rgba(215,131,94,.1); }
+.phone-error, .phone-validation { margin: 7px 2px 0; color: #b45f39; font-size: 12px; line-height: 1.35; }
+.missing-card .result-copy strong { font-size: 16px; margin: 0 0 4px; }
+.missing-card .result-copy > span:last-child { font-size: 12px; }
+.missing-card .text-button { min-height: 40px; padding: 0 12px; border: 1px solid #edcbb0; border-radius: 9px; background: #fff3e7; font-size: 12px; }
+.missing-card .text-button:hover { background: #ffe9d7; }
+.not-found-card { display: flex; align-items: center; gap: 14px; padding: 16px; }
+.not-found-card .not-found-copy { flex: 1; }
+.not-found-card .not-found-copy strong { font-size: 16px; color: #514b46; }
+.not-found-card .not-found-copy span { font-size: 12px; margin-top: 4px; }
+.not-found-card .client-register-button { flex: 0 0 auto; width: auto; min-width: 120px; height: 42px; margin: 0; padding: 0 14px; justify-content: center; font-size: 12px; }
+@media (max-width: 470px) {
+  .not-found-card { align-items: flex-start; flex-wrap: wrap; }
+  .not-found-card .client-register-button { flex-basis: 100%; }
+}
+.client-form input[aria-invalid="true"] { border-color: #d7835e; box-shadow: 0 0 0 4px rgba(215,131,94,.1); }
