@@ -275,7 +275,7 @@ export default function Home() {
 
       {integrationError && <div role="alert" className="container mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">SpaGym is not connected: {integrationError}. Client and visit data are not being stored on this device.</div>}
 
-      <section className="hero container">
+      {activeWorkspaceTab === "today" && <section className="hero container">
         <div>
           <p className="eyebrow">DIGITAL REGISTRATION BOOK <span>•</span> TODAY</p>
           <h1>{timeGreeting}<br /><em>Ready when they are.</em></h1>
@@ -285,7 +285,7 @@ export default function Home() {
           <div className="stat-card"><span className="stat-icon mint"><Check size={17} /></span><div><strong>{visitCount}</strong><span>checked in today</span></div></div>
           <div className="stat-card"><span className="stat-icon peach"><Users size={17} /></span><div><strong>{clientCount ?? "—"}</strong><span>registered clients</span></div></div>
         </div>
-      </section>
+      </section>}
 
       {activeWorkspaceTab === "branches" && <section className="branch-admin container" aria-labelledby="branch-admin-title">
         <div className="branch-admin-heading">
