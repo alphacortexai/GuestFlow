@@ -396,3 +396,7 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 @media (max-width: 470px) {
   .not-found-card .client-register-button { height: 56px; min-height: 56px; }
 }
+.not-found-card .client-register-button, .not-found-card .client-register-button span { color: #fff; font-size: 17px; }
+@media (max-width: 470px) {
+  .not-found-card .client-register-button, .not-found-card .client-register-button span { font-size: 16px; }
+}
