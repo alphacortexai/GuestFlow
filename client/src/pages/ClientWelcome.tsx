@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Sparkles, UserPlus } from "lucide-react";
-import { checkIn as apiCheckIn, createClient as apiCreateClient, SpaGymApiError } from "@/lib/spaGymApi";
+import { checkIn as apiCheckIn, createClient as apiCreateClient, getBranches, SpaGymApiError } from "@/lib/spaGymApi";
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const weekdayNames = ["S", "M", "T", "W", "T", "F", "S"];
 const normalizePhone = (phone: string) => {
@@ -10,6 +10,8 @@ const normalizePhone = (phone: string) => {
   return digits;
 };
 export default function ClientWelcome() {
+  const branchId = useMemo(() => new URLSearchParams(window.location.search).get("branchId") || "", []);
+  const [branchName, setBranchName] = useState("");
   const [mode, setMode] = useState<"check-in" | "register" | "success">("check-in");
   const [registerStep, setRegisterStep] = useState(1);
   const [phone, setPhone] = useState("");
@@ -33,6 +35,13 @@ export default function ClientWelcome() {
   }, []);
 
   useEffect(() => {
+    if (!branchId) return;
+    getBranches()
+      .then((items) => setBranchName(items.find((branch) => branch.id === branchId)?.name || ""))
+      .catch(() => setBranchName(""));
+  }, [branchId]);
+
+  useEffect(() => {
     if (mode !== "success") return;
     const timer = window.setTimeout(() => {
       setMode("check-in"); setRegisterStep(1); setPhone("");
@@ -49,7 +58,7 @@ export default function ClientWelcome() {
     setIsSubmitting(true);
     setRequestError("");
     try {
-      const result = await apiCheckIn(phone);
+      const result = await apiCheckIn(phone, branchId || undefined);
       setClientName(result.client.name);
       setAlreadyCheckedIn(result.alreadyCheckedIn);
       setNotFound(false);
@@ -69,8 +78,8 @@ export default function ClientWelcome() {
     setIsSubmitting(true);
     setRequestError("");
     try {
-      const result = await apiCreateClient({ name: registration.name.trim(), day: registration.day, month: registration.month, phone: registration.phone });
-      const signIn = await apiCheckIn(registration.phone);
+      const result = await apiCreateClient({ name: registration.name.trim(), day: registration.day, month: registration.month, phone: registration.phone, branchId: branchId || undefined });
+      const signIn = await apiCheckIn(registration.phone, branchId || undefined);
       setClientName(signIn.client.name || result.client.name);
       setAlreadyCheckedIn(signIn.alreadyCheckedIn);
       setNotFound(false);
@@ -96,7 +105,7 @@ export default function ClientWelcome() {
   return (
     <main className="client-screen">
       <div className="client-orb client-orb-one" /><div className="client-orb client-orb-two" />
-      <div className="client-brand"><span className="brand-mark"><Sparkles size={16} /></span><span>guestflow</span></div>
+      <div className="client-brand"><span className="brand-mark"><Sparkles size={16} /></span><span>guestflow</span>{branchName && <span className="client-branch-name">{branchName}</span>}</div>
       <section className={`client-card ${mode === "register" ? "client-card-register" : ""}`}>
         {requestError && mode !== "success" && <div role="alert" className="client-not-found"><strong>We couldn’t reach SpaGym</strong><span>{requestError}</span></div>}
         {mode === "success" ? (

@@ -86,6 +86,7 @@ export function createApp() {
   }
 
   // These endpoints are deliberately narrow: the browser never receives the SpaGym API secret.
+  app.get("/api/spagym/branches", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "branches"));
   app.get("/api/spagym/clients/lookup", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "clients/lookup"));
   app.post("/api/spagym/clients", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "clients"));
   app.post("/api/spagym/check-ins", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));

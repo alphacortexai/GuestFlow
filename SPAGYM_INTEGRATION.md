@@ -19,10 +19,12 @@ Configure SpaGym's Admin SDK credentials and API contract as described in [SpaGy
 
 - Existing client lookup searches SpaGym using normalized phone numbers.
 - New registrations are created in SpaGym; duplicate phones return the existing SpaGym client rather than creating another record.
+- GuestFlow loads SpaGym branches. Its branch panel creates a `/welcome?branchId=<SpaGym-branch-id>` kiosk link per branch and filters the front-desk summary and activity by the selected branch.
+- New profiles created from a branch-specific kiosk link are assigned to that SpaGym branch. Returning clients keep their original profile branch, while their visit is attributed to the branch where they checked in.
 - A client may have one active visit at a time. Repeat active check-ins are deduplicated; manual checkout or the existing 12-hour automatic checkout closes that visit, after which a same-day re-entry creates a new visit record. GuestFlow's front-desk activity is refreshed from SpaGym every 30 seconds.
 - Check-outs from GuestFlow and from SpaGym's **Spa check-ins** section update the same Firestore visit document. Automatic timeout check-outs are also persisted in Firestore.
 - If the SpaGym server or shared key is unavailable, the app displays a connection error and does not fall back to browser storage.
 
 ## Useful endpoints
 
-GuestFlow exposes its same-origin server proxy under `/api/spagym/` for client lookup, registration, check-in, checkout and today's summary. The browser never receives the SpaGym service key.
+GuestFlow exposes its same-origin server proxy under `/api/spagym/` for branch listing, client lookup, registration, check-in, checkout and today's summary. SpaGym validates branch IDs against its registered branches. The browser never receives the SpaGym service key.
