@@ -189,7 +189,7 @@ export default function Home() {
   const checkIn = async (client: Client) => {
     setIsSubmitting(true);
     try {
-      const result = await apiCheckIn(client.phone, branchId || undefined);
+      const result = await apiCheckIn(client.phone, client.id);
       setNotice(result.alreadyCheckedIn
         ? { title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
         : { title: `${client.name} is checked in`, detail: "Their visit has been added to SpaGym’s shared register." });
@@ -230,19 +230,24 @@ export default function Home() {
     const normalized = normalizePhone(registration.phone);
     if (!registration.name.trim() || !registration.day || !registration.month || normalized.length < 7) return;
     setIsSubmitting(true);
+    let savedClientName = "";
     try {
       const result = await apiCreateClient({ name: registration.name.trim(), phone: registration.phone, day: registration.day, month: registration.month, branchId: branchId || undefined });
-      const signIn = await apiCheckIn(registration.phone, branchId || undefined);
+      savedClientName = result.client.name;
+      const signIn = await apiCheckIn(registration.phone, result.client.id);
       await refreshDashboard();
       setNotice(signIn.alreadyCheckedIn
         ? { title: `${result.client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
         : result.created
           ? { title: "New client registered", detail: `The profile and visit are saved in SpaGym under ${branchId ? activeBranchName : "the default branch"}.` }
-          : { title: `${result.client.name} already exists`, detail: `No duplicate profile was created. Their profile remains under ${result.client.branch || "an unassigned branch"}; this visit is recorded at ${branchId ? activeBranchName : result.client.branch || "their existing branch"}.` });
+          : { title: `${result.client.name} already exists`, detail: `No duplicate profile was created. Their profile and visit remain under ${result.client.branch || "an unassigned branch"}.` });
       setRegistration({ name: "", day: "", month: "", phone: "" });
       setShowRegistration(false);
     } catch (error) {
-      setNotice({ title: "Registration failed", detail: error instanceof Error ? error.message : "Please try again." });
+      const detail = error instanceof Error ? error.message : "Please try again.";
+      setNotice(savedClientName
+        ? { title: `${savedClientName} was saved`, detail: `The SpaGym profile exists, but today's check-in did not finish: ${detail}` }
+        : { title: "Registration failed", detail });
     } finally {
       setIsSubmitting(false);
     }
