@@ -400,3 +400,30 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 @media (max-width: 470px) {
   .not-found-card .client-register-button, .not-found-card .client-register-button span { font-size: 16px; }
 }
+
+/* Landscape tablet kiosk layout: use the available width while keeping the flow calm and readable. */
+@media (orientation: landscape) and (min-width: 800px) {
+  .client-screen { padding: 48px 6vw; overflow-y: auto; }
+  .client-brand { top: 30px; left: 42px; font-size: 19px; }
+  .client-card { width: min(100%, 820px); padding: 54px 84px 46px; border-radius: 30px; }
+  .client-card h1 { font-size: 60px; margin: 16px 0 20px; }
+  .client-card p, .client-intro { max-width: 600px !important; font-size: 20px; line-height: 1.5; margin-bottom: 34px; }
+  .client-flow-step { width: min(100%, 640px); margin: 0 auto; }
+  .client-form, .client-registration-form { max-width: 640px; margin: 0 auto; }
+  .client-form label { font-size: 17px; margin-bottom: 11px; }
+  .client-form input { height: 72px; border-radius: 15px; padding: 0 20px; font-size: 24px; }
+  .client-primary-button { height: 68px; border-radius: 15px; font-size: 19px; }
+  .not-found-card .client-register-button { height: 68px; min-height: 68px; font-size: 19px; }
+  .client-privacy { font-size: 15px; }
+  .client-step-header { min-height: 20px; }
+  .client-back, .client-progress { font-size: 15px; }
+  .client-progress-bar { height: 5px; margin: 22px 0 30px; }
+  .apple-calendar { padding: 20px 24px 18px; border-radius: 19px; }
+  .calendar-picker-heading { font-size: 17px; margin-bottom: 16px; }
+  .month-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .month-grid button { height: 54px; font-size: 15px; }
+  .calendar-toolbar strong { font-size: 18px; }
+  .calendar-weekdays span { font-size: 13px; }
+  .calendar-grid button, .calendar-grid span { min-height: 44px; font-size: 16px; }
+  .calendar-selection { min-height: 42px; padding-top: 12px; font-size: 15px; }
+}
