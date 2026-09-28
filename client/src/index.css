@@ -374,3 +374,15 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
   .month-grid button { height: 44px; }
   .calendar-grid button, .calendar-grid span { min-height: 32px; }
 }
+
+/* High-contrast client guidance and recovery action. */
+.client-intro { color: #4d3c34 !important; font-weight: 500; max-width: 430px !important; }
+.not-found-card { background: #fff4e6; border-color: #dda36d; box-shadow: 0 8px 22px rgba(150, 78, 24, .1); }
+.not-found-card .not-found-copy strong { color: #542015; font-size: 18px; }
+.not-found-card .client-register-button { min-width: 190px; border-color: #d8874c; background: #ffe3ca; color: #682610; font-weight: 700; line-height: 1.25; white-space: normal; }
+.not-found-card .client-register-button:hover { background: #ffd4b0; color: #4f1b0b; }
+.client-privacy { color: #705c52; font-weight: 500; }
+
+@media (max-width: 470px) {
+  .not-found-card .client-register-button { min-width: 0; }
+}
