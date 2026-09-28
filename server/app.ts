@@ -1,4 +1,5 @@
 import express from "express";
+import type { NextFunction, Request, Response } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -13,7 +14,7 @@ export function createApp() {
   app.disable("x-powered-by");
   app.use(express.json({ limit: "24kb" }));
 
-  function limitIntegrationTraffic(req: express.Request, res: express.Response, next: express.NextFunction) {
+  function limitIntegrationTraffic(req: Request, res: Response, next: NextFunction) {
     const now = Date.now();
     const address = req.ip || req.socket.remoteAddress || "unknown";
     const current = proxyHits.get(address);
@@ -28,7 +29,7 @@ export function createApp() {
     next();
   }
 
-  async function spaGymProxy(req: express.Request, res: express.Response, upstreamPath: string) {
+  async function spaGymProxy(req: Request, res: Response, upstreamPath: string) {
     const origin = process.env.SPAGYM_API_URL?.trim().replace(/\/+$/, "");
     const apiKey = process.env.SPAGYM_API_KEY;
     if (!origin || !apiKey) {
@@ -72,15 +73,15 @@ export function createApp() {
   }
 
   // These endpoints are deliberately narrow: the browser never receives the SpaGym API secret.
-  app.get("/api/spagym/clients/lookup", limitIntegrationTraffic, (req, res) => spaGymProxy(req, res, "clients/lookup"));
-  app.post("/api/spagym/clients", limitIntegrationTraffic, (req, res) => spaGymProxy(req, res, "clients"));
-  app.post("/api/spagym/check-ins", limitIntegrationTraffic, (req, res) => spaGymProxy(req, res, "check-ins"));
-  app.get("/api/spagym/check-ins", limitIntegrationTraffic, (req, res) => spaGymProxy(req, res, "check-ins"));
-  app.post("/api/spagym/check-ins/:visitId/checkout", limitIntegrationTraffic, (req, res) => {
+  app.get("/api/spagym/clients/lookup", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "clients/lookup"));
+  app.post("/api/spagym/clients", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "clients"));
+  app.post("/api/spagym/check-ins", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
+  app.get("/api/spagym/check-ins", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
+  app.post("/api/spagym/check-ins/:visitId/checkout", limitIntegrationTraffic, (req: Request, res: Response) => {
     req.body = { ...(req.body || {}), id: req.params.visitId };
     return spaGymProxy(req, res, "check-ins/checkout");
   });
-  app.get("/api/spagym/summary", limitIntegrationTraffic, (req, res) => spaGymProxy(req, res, "summary"));
+  app.get("/api/spagym/summary", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "summary"));
 
   // Vercel serves the Vite output as static files. The fallback is only needed by the local standalone server.
   if (!process.env.VERCEL) {
@@ -88,7 +89,7 @@ export function createApp() {
       ? path.resolve(__dirname, "public")
       : path.resolve(__dirname, "..", "dist", "public");
     app.use(express.static(staticPath));
-    app.get("*", (_req, res) => {
+    app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(staticPath, "index.html"));
     });
   }
