@@ -28,7 +28,7 @@ button, input, select { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(230,108,85,.25); outline-offset: 2px; }
 
-.app-shell { min-height: 100vh; overflow: hidden; position: relative; padding-bottom: 24px; }
+.app-shell { min-height: 100vh; overflow: visible; position: relative; padding-bottom: 24px; }
 .ambient { position: absolute; border-radius: 999px; pointer-events: none; filter: blur(2px); opacity: .55; }
 .ambient-one { width: 360px; height: 360px; top: 50px; right: -180px; background: #f2d6ce; }
 .ambient-two { width: 260px; height: 260px; top: 480px; left: -180px; background: #d9e9df; }
