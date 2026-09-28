@@ -299,3 +299,13 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
   .workspace-tabs { width: calc(100% - 32px); overflow-x: auto; }
   .workspace-tabs button { flex: 0 0 auto; min-width: 132px; padding: 0 12px; font-size: 11px; }
 }
+
+/* Keep navigation and workspace switching available while the page content scrolls. */
+.topbar { position: sticky; top: 0; z-index: 40; background: var(--paper); }
+.workspace-tabs { position: sticky; top: 80px; z-index: 30; }
+@media (max-width: 800px) {
+  .workspace-tabs { top: 67px; }
+}
+@media (max-width: 620px) {
+  .workspace-tabs { top: 68px; }
+}
