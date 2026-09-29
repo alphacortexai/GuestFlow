@@ -47,7 +47,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .hero { padding: 12px 0 18px; display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; }
 .eyebrow, .section-kicker { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .16em; color: #a09a95; font-weight: 500; }
 .eyebrow span { color: var(--coral); padding: 0 4px; }
-h1 { font-size: clamp(38px, 5.3vw, 66px); line-height: .99; letter-spacing: -.065em; margin: 12px 0 18px; font-weight: 600; }
+h1 { font-size: clamp(34px, 4.7vw, 58px); line-height: .99; letter-spacing: -.065em; margin: 12px 0 18px; font-weight: 600; }
 h1 em { font-family: 'Playfair Display', serif; font-weight: 500; color: var(--coral); letter-spacing: -.06em; }
 .hero-copy { color: var(--muted-ink); line-height: 1.6; font-size: 15px; max-width: 430px; margin: 0; }
 .stat-strip { display: flex; gap: 12px; align-self: flex-end; }
@@ -212,7 +212,7 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 /* Client screen follows the same restrained maroon and tan palette. */
 .client-screen { background: #fbfaf8; }.client-card { border-color: #eadfd5; box-shadow: 0 18px 50px rgba(81,0,2,.06); }.client-card h1 em { color: var(--coral); }.client-primary-button { background: var(--coral); }.client-primary-button:hover { background: var(--coral-dark); }.client-icon { background: #f0d6d2; color: var(--coral); }.client-register-button { border-color: #dfc7b2; background: #fffaf5; color: var(--brown); }.client-register-button:hover { background: #f3e4d5; color: var(--coral); }.success-mark { background: #eadfd5; color: var(--brown); }
 @media (max-width: 900px) { .workspace { max-width: 720px; }.activity-row { flex-wrap: wrap; padding: 12px 0; }.activity-person { min-width: 145px; }.activity-birthday { min-width: 120px; }.activity-time { margin-left: auto; } }
-@media (max-width: 620px) { .container { width: min(100% - 32px, 520px); }.topbar { width: calc(100% - 32px); height: 68px; }.brand-caption, .topbar-meta > span:not(.live-dot), .meta-divider { display: none; }.hero { padding-top: 38px; }.hero h1 { font-size: 43px; }.stat-strip { display: none; }.panel { padding: 22px 18px; }.activity-heading { display: block; }.activity-search { width: 100%; margin-top: 14px; }.activity-person { flex: 1; min-width: 130px; }.activity-birthday { display: none; }.activity-time { margin-left: 0; }.signed-pill { margin-left: auto; }.client-card { padding: 35px 23px 27px; } }
+@media (max-width: 620px) { .container { width: min(100% - 32px, 520px); }.topbar { width: calc(100% - 32px); height: 68px; }.brand-caption, .topbar-meta > span:not(.live-dot), .meta-divider { display: none; }.hero { padding-top: 38px; }.hero h1 { font-size: 38px; }.stat-strip { display: none; }.panel { padding: 22px 18px; }.activity-heading { display: block; }.activity-search { width: 100%; margin-top: 14px; }.activity-person { flex: 1; min-width: 130px; }.activity-birthday { display: none; }.activity-time { margin-left: 0; }.signed-pill { margin-left: auto; }.client-card { padding: 35px 23px 27px; } }
 
 /* Luxury happy colors — citrus, marigold, orchid, rose, and olive */
 :root { --ink: #34251f; --muted-ink: #806c68; --paper: #fffaf5; --line: #f1dfd2; --coral: #ff5a0a; --coral-dark: #e94700; --mint: #f7d663; --lilac: #c084bd; --peach: #ffbd52; --rose: #ee8fb3; --olive: #b18c3e; --brown: #8a6840; }
@@ -276,7 +276,7 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 @media (min-width: 700px) and (max-width: 1200px) {
   .container, .topbar { width: min(100% - 56px, 1040px); }
   .hero { padding-top: 10px; padding-bottom: 14px; }
-  .hero h1 { font-size: clamp(42px, 5vw, 58px); }
+  .hero h1 { font-size: clamp(38px, 4.5vw, 52px); }
   .workspace { max-width: 1040px; }
   .workspace-tabs { max-width: 1040px; }
   .activity-section { margin-top: 30px; }

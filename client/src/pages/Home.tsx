@@ -292,7 +292,7 @@ export default function Home() {
       {activeWorkspaceTab === "today" && <section className="hero container">
         <div>
           <p className="eyebrow">DIGITAL REGISTRATION BOOK <span>•</span> TODAY</p>
-          <h1>{timeGreeting}<br /><em>Ready when they are.</em></h1>
+          <h1>{timeGreeting}</h1>
           <p className="hero-copy">Check in a returning client in seconds, or add a new client to your register without the paper chase.</p>
         </div>
         <div className="stat-strip">
