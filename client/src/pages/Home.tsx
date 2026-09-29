@@ -10,7 +10,6 @@ import {
   Search,
   Sparkles,
   UserPlus,
-  Users,
   X,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -60,22 +59,16 @@ const formatTime = (iso: string) =>
   new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 const isSameDay = (first: Date, second = new Date()) => first.toDateString() === second.toDateString();
 const isCheckedOut = (visit: Visit) => Boolean(visit.checkedOutAt);
-const getTimeGreeting = (date = new Date()) => {
-  const hour = date.getHours();
-  if (hour < 12) return "Good morning.";
-  if (hour < 18) return "Good afternoon.";
-  return "Good evening.";
-};
 const todayLabel = new Intl.DateTimeFormat("en", {
   weekday: "long",
   month: "long",
   day: "numeric",
 }).format(new Date());
 
-export default function Home() {
-  const [timeGreeting, setTimeGreeting] = useState(() => getTimeGreeting());
+type HomeProps = { onLogout: () => void };
+
+export default function Home({ onLogout }: HomeProps) {
   const [visits, setVisits] = useState<Visit[]>([]);
-  const [clientCount, setClientCount] = useState<number | null>(null);
   const [visitCount, setVisitCount] = useState(0);
   const [branches, setBranches] = useState<SpaGymBranch[]>([]);
   const [branchId, setBranchId] = useState(() => new URLSearchParams(window.location.search).get("branchId") || "");
@@ -94,11 +87,6 @@ export default function Home() {
 
   const isVisible = usePageVisibility();
 
-  useEffect(() => {
-    const refreshGreeting = () => setTimeGreeting(getTimeGreeting());
-    const interval = window.setInterval(refreshGreeting, 60_000);
-    return () => window.clearInterval(interval);
-  }, []);
   const [registration, setRegistration] = useState({ name: "", day: "", month: "", phone: "" });
   const [registrationPhoneError, setRegistrationPhoneError] = useState("");
   const registrationRef = useRef<HTMLDivElement>(null);
@@ -106,7 +94,6 @@ export default function Home() {
   const refreshDashboard = useCallback(async () => {
     try {
       const summary = await getSummary(branchId || undefined, true);
-      setClientCount(summary.clientCount);
       setVisitCount(summary.visitCount);
       setVisits(summary.visits || []);
       setIntegrationError("");
@@ -277,7 +264,7 @@ export default function Home() {
           <div className="brand-mark"><Sparkles size={18} strokeWidth={2.5} /></div>
           <div><div className="brand-name">guestflow</div><div className="brand-caption">your welcome desk, simplified</div></div>
         </div>
-        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href={branchId ? `/welcome?branchId=${encodeURIComponent(branchId)}` : "/welcome"}>Client screen ↗</Link></div>
+        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href={branchId ? `/welcome?branchId=${encodeURIComponent(branchId)}` : "/welcome"}>Client screen ↗</Link><button className="logout-button" type="button" onClick={onLogout}><LogOut size={14} /> Log out</button></div>
       </header>
 
       <nav className="workspace-tabs container" aria-label="GuestFlow workspace sections">
@@ -288,18 +275,6 @@ export default function Home() {
       </nav>
 
       {integrationError && <div role="alert" className="container mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">SpaGym is not connected: {integrationError}. Client and visit data are not being stored on this device.</div>}
-
-      {activeWorkspaceTab === "today" && <section className="hero container">
-        <div>
-          <p className="eyebrow">DIGITAL REGISTRATION BOOK <span>•</span> TODAY</p>
-          <h1>{timeGreeting}</h1>
-          <p className="hero-copy">Check in a returning client in seconds, or add a new client to your register without the paper chase.</p>
-        </div>
-        <div className="stat-strip">
-          <div className="stat-card"><span className="stat-icon mint"><Check size={17} /></span><div><strong>{visitCount}</strong><span>checked in today</span></div></div>
-          <div className="stat-card"><span className="stat-icon peach"><Users size={17} /></span><div><strong>{clientCount ?? "—"}</strong><span>registered clients</span></div></div>
-        </div>
-      </section>}
 
       {activeWorkspaceTab === "branches" && <section className="branch-admin container" aria-labelledby="branch-admin-title">
         <div className="branch-admin-heading">

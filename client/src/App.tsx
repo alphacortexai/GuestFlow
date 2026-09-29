@@ -12,6 +12,14 @@ import Home from "./pages/Home";
 function AdminGate() {
   const [status, setStatus] = React.useState<"loading" | "login" | "authenticated">("loading");
 
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    } finally {
+      setStatus("login");
+    }
+  };
+
   React.useEffect(() => {
     fetch("/api/auth/session", { credentials: "same-origin", cache: "no-store" })
       .then((response) => response.json())
@@ -21,7 +29,7 @@ function AdminGate() {
 
   if (status === "loading") return <main className="admin-auth-screen"><div className="admin-auth-loading">Checking admin access…</div></main>;
   if (status === "login") return <AdminLogin onAuthenticated={() => setStatus("authenticated")} />;
-  return <Home />;
+  return <Home onLogout={logout} />;
 }
 
 function Router() {
