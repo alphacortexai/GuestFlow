@@ -175,7 +175,7 @@ export default function Home({ onLogout }: HomeProps) {
   const checkIn = async (client: Client) => {
     setIsSubmitting(true);
     try {
-      const result = await apiCheckIn(client.phone, client.id, true);
+      const result = await apiCheckIn(client.phone, client.id, true, branchId || undefined);
       setNotice(result.alreadyCheckedIn
         ? { title: `${client.name} is already checked in`, detail: "This client already has a visit recorded for today." }
         : { title: `${client.name} is checked in`, detail: "Their visit has been added to SpaGym’s shared register." });
@@ -225,7 +225,7 @@ export default function Home({ onLogout }: HomeProps) {
     try {
       const result = await apiCreateClient({ name: registration.name.trim(), phone: registration.phone, day: registration.day, month: registration.month, branchId: branchId || undefined }, true);
       savedClientName = result.client.name;
-      const signIn = await apiCheckIn(registration.phone, result.client.id, true);
+      const signIn = await apiCheckIn(registration.phone, result.client.id, true, branchId || undefined);
       await refreshDashboard();
       setNotice(signIn.alreadyCheckedIn
         ? { title: `${result.client.name} is already checked in`, detail: "This client already has a visit recorded for today." }

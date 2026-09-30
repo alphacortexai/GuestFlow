@@ -67,7 +67,7 @@ export default function ClientWelcome() {
     setRequestError("");
     setProfileSaved(false);
     try {
-      const result = await apiCheckIn(phone);
+      const result = await apiCheckIn(phone, undefined, false, branchId || undefined);
       setClientName(result.client.name);
       setAlreadyCheckedIn(result.alreadyCheckedIn);
       setNotFound(false);
@@ -95,7 +95,7 @@ export default function ClientWelcome() {
     try {
       const result = await apiCreateClient({ name: registration.name.trim(), day: registration.day, month: registration.month, phone: registration.phone, branchId: branchId || undefined });
       savedClientName = result.client.name;
-      const signIn = await apiCheckIn(registration.phone, result.client.id);
+      const signIn = await apiCheckIn(registration.phone, result.client.id, false, branchId || undefined);
       setClientName(signIn.client.name || result.client.name);
       setAlreadyCheckedIn(signIn.alreadyCheckedIn);
       setNotFound(false);

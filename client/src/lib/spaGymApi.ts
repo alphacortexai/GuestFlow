@@ -78,10 +78,10 @@ export async function createClient(input: { name: string; phone: string; day: st
   }, admin);
 }
 
-export async function checkIn(phone: string, clientId?: string, admin = false) {
+export async function checkIn(phone: string, clientId?: string, admin = false, branchId?: string) {
   return request<{ client: SpaGymClient; visit: SpaGymVisit; alreadyCheckedIn: boolean }>('/check-ins', {
     method: 'POST',
-    body: JSON.stringify({ phone, ...(clientId ? { clientId } : {}) }),
+    body: JSON.stringify({ phone, ...(clientId ? { clientId } : {}), ...(branchId ? { branchId } : {}) }),
   }, admin);
 }
 
