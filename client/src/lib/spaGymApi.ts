@@ -24,6 +24,8 @@ export type SpaGymVisit = {
   birthMonth: number | null;
   birthDay: number | null;
   branch: string;
+  checkedInBranch?: string;
+  registeredBranch?: string;
   visitDate: string;
   checkedInAt: string;
   checkedOutAt: string | null;
