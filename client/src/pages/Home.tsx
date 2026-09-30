@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Link } from "wouter";
+import { formatPhone, isValidPhone } from "@/lib/phone";
 import { checkIn as apiCheckIn, checkOut as apiCheckOut, createClient as apiCreateClient, getBranches, getSummary, SpaGymApiError, SpaGymBranch, SpaGymVisit, lookupClient as apiLookupClient } from "@/lib/spaGymApi";
 
 type Client = {
@@ -43,18 +44,6 @@ const monthOptions = [
   "December",
 ];
 
-const normalizePhone = (phone: string) => {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("00")) return digits.slice(2);
-  if (digits.startsWith("0")) return `256${digits.slice(1)}`;
-  return digits;
-};
-const isValidPhone = (phone: string) => /^256\d{9}$/.test(normalizePhone(phone));
-const formatPhone = (phone: string) => {
-  const digits = normalizePhone(phone);
-  if (digits.length === 12 && digits.startsWith("256")) return `+256 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
-  return phone;
-};
 const formatTime = (iso: string) =>
   new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 const isSameDay = (first: Date, second = new Date()) => first.toDateString() === second.toDateString();
@@ -151,7 +140,7 @@ export default function Home({ onLogout }: HomeProps) {
 
   const findClient = async () => {
     if (!isValidPhone(phone)) {
-      setPhoneError("Enter a valid number, e.g. +256 7XX XXX XXX.");
+      setPhoneError("Enter a valid phone number, including the country code if needed.");
       setLookupState("idle");
       setActiveClient(null);
       return;
@@ -226,7 +215,7 @@ export default function Home({ onLogout }: HomeProps) {
       return;
     }
     if (!isValidPhone(registration.phone)) {
-      setRegistrationPhoneError("Enter a valid number, e.g. +256 7XX XXX XXX.");
+      setRegistrationPhoneError("Enter a valid phone number, including the country code if needed.");
       return;
     }
     setRegistrationPhoneError("");
@@ -292,7 +281,7 @@ export default function Home({ onLogout }: HomeProps) {
             <p className="panel-description">Enter the phone number from their client record to sign them in.</p>
             <div className="phone-entry">
               <label htmlFor="phone">Phone number</label>
-              <div className={`phone-input-wrap ${lookupState} ${phoneError ? "has-error" : ""}`}><Search size={22} /><input id="phone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+?256|0)[0-9\s()-]{9,14}" aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? "phone-error" : undefined} placeholder="+256 7XX XXX XXX" value={phone} onChange={(event) => { setPhone(event.target.value); setPhoneError(""); setLookupState("idle"); }} onKeyDown={(event) => event.key === "Enter" && findClient()} /><button className="clear-button" type="button" aria-label="Clear phone number" onClick={() => { setPhone(""); setPhoneError(""); setLookupState("idle"); }}>{phone && <X size={18} />}</button></div>
+              <div className={`phone-input-wrap ${lookupState} ${phoneError ? "has-error" : ""}`}><Search size={22} /><input id="phone" type="tel" inputMode="tel" autoComplete="tel" pattern="(?:\+|00)?[\d\s().-]{7,}" aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? "phone-error" : undefined} placeholder="+256 7XX XXX XXX or your local number" value={phone} onChange={(event) => { setPhone(event.target.value); setPhoneError(""); setLookupState("idle"); }} onKeyDown={(event) => event.key === "Enter" && findClient()} /><button className="clear-button" type="button" aria-label="Clear phone number" onClick={() => { setPhone(""); setPhoneError(""); setLookupState("idle"); }}>{phone && <X size={18} />}</button></div>
               {phoneError && <p id="phone-error" className="phone-error" role="alert">{phoneError}</p>}
               <button className="primary-button full" type="button" onClick={findClient} disabled={isSubmitting}><span>{isSubmitting ? "Checking…" : "Check phone number"}</span><ArrowRight size={18} /></button>
             </div>
@@ -309,7 +298,7 @@ export default function Home({ onLogout }: HomeProps) {
             <form onSubmit={registerClient} className="registration-form">
               <div className="field full-field"><label htmlFor="name">Full name</label><input id="name" placeholder="e.g. Jordan Lee" value={registration.name} onChange={(event) => setRegistration({ ...registration, name: event.target.value })} required /></div>
               <div className="field-group"><div className="field"><label htmlFor="day">Birthday · day</label><div className="select-wrap"><select id="day" value={registration.day} onChange={(event) => setRegistration({ ...registration, day: event.target.value })} required><option value="">Day</option>{Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}</option>)}</select><ChevronDown size={17} /></div></div><div className="field"><label htmlFor="month">Month</label><div className="select-wrap"><select id="month" value={registration.month} onChange={(event) => setRegistration({ ...registration, month: event.target.value })} required><option value="">Month</option>{monthOptions.map((month) => <option key={month} value={month}>{month}</option>)}</select><ChevronDown size={17} /></div></div></div>
-              <div className="field full-field"><label htmlFor="new-phone">Phone number</label><input id="new-phone" type="tel" inputMode="tel" pattern="(?:\+?256|0)[0-9\s()-]{9,14}" aria-invalid={Boolean(registrationPhoneError)} aria-describedby={registrationPhoneError ? "new-phone-error" : undefined} placeholder="+256 7XX XXX XXX" value={registration.phone} onChange={(event) => { setRegistration({ ...registration, phone: event.target.value }); setRegistrationPhoneError(""); }} required />{registrationPhoneError && <p id="new-phone-error" className="phone-error" role="alert">{registrationPhoneError}</p>}</div>
+              <div className="field full-field"><label htmlFor="new-phone">Phone number</label><input id="new-phone" type="tel" inputMode="tel" pattern="(?:\+|00)?[\d\s().-]{7,}" aria-invalid={Boolean(registrationPhoneError)} aria-describedby={registrationPhoneError ? "new-phone-error" : undefined} placeholder="+256 7XX XXX XXX or your local number" value={registration.phone} onChange={(event) => { setRegistration({ ...registration, phone: event.target.value }); setRegistrationPhoneError(""); }} required />{registrationPhoneError && <p id="new-phone-error" className="phone-error" role="alert">{registrationPhoneError}</p>}</div>
               <button className="primary-button coral-button full" type="submit" disabled={isSubmitting}><UserPlus size={18} /><span>{isSubmitting ? "Saving…" : "Register & sign in"}</span><ArrowRight size={18} /></button>
               <p className="form-note">By continuing, you confirm this client has agreed to be added to the register.</p>
             </form>
