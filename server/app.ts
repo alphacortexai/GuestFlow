@@ -163,6 +163,7 @@ export function createApp() {
   app.get("/api/spagym/branches", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "branches"));
   app.get("/api/spagym/clients/lookup", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "clients/lookup"));
   app.post("/api/spagym/clients", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "clients"));
+  app.post("/api/spagym/clients/reassign", limitIntegrationTraffic, requireAdmin, (req: Request, res: Response) => spaGymProxy(req, res, "clients/reassign"));
   app.post("/api/spagym/check-ins", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
   app.get("/api/spagym/check-ins", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "check-ins"));
   app.post("/api/spagym/check-ins/:visitId/checkout", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => {

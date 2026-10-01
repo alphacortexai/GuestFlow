@@ -12,9 +12,8 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { Link } from "wouter";
 import { formatPhone, isValidPhone } from "@/lib/phone";
-import { checkIn as apiCheckIn, checkOut as apiCheckOut, createClient as apiCreateClient, getBranches, getSummary, SpaGymApiError, SpaGymBranch, SpaGymVisit, lookupClient as apiLookupClient } from "@/lib/spaGymApi";
+import { checkIn as apiCheckIn, checkOut as apiCheckOut, createClient as apiCreateClient, getBranches, getSummary, SpaGymApiError, SpaGymBranch, SpaGymClient, SpaGymVisit, lookupClient as apiLookupClient, reassignClientBranch } from "@/lib/spaGymApi";
 
 type Client = {
   id: string;
@@ -72,6 +71,10 @@ export default function Home({ onLogout }: HomeProps) {
   const [showRegistration, setShowRegistration] = useState(false);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"today" | "returning" | "branches" | "client">("today");
   const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
+  const [repairPhone, setRepairPhone] = useState("");
+  const [repairClient, setRepairClient] = useState<SpaGymClient | null>(null);
+  const [repairError, setRepairError] = useState("");
+  const [repairBranchId, setRepairBranchId] = useState("");
   const activeBranchName = branches.find((branch) => branch.id === branchId)?.name || "All branches";
 
   const isVisible = usePageVisibility();
@@ -135,6 +138,46 @@ export default function Home({ onLogout }: HomeProps) {
       setNotice({ title: `${branch.name} link copied`, detail: "Share this link with clients for this branch." });
     } catch {
       setNotice({ title: "Could not copy link", detail: branchWelcomeUrl(branch.id) });
+    }
+  };
+
+  const findRepairClient = async () => {
+    if (!isValidPhone(repairPhone)) {
+      setRepairError("Enter the client’s phone number, including the country code if needed.");
+      setRepairClient(null);
+      return;
+    }
+    setRepairError("");
+    setIsSubmitting(true);
+    try {
+      setRepairClient(await apiLookupClient(repairPhone, true));
+    } catch (error) {
+      setRepairClient(null);
+      setRepairError(error instanceof SpaGymApiError && error.status === 404 ? "No client record was found for that phone number." : error instanceof Error ? error.message : "Could not find this client.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const repairBranch = async () => {
+    if (!repairClient || !repairBranchId) {
+      setRepairError("Find a client and choose the branch they should belong to.");
+      return;
+    }
+    const targetBranch = branches.find((branch) => branch.id === repairBranchId);
+    if (!targetBranch) return;
+    setIsSubmitting(true);
+    setRepairError("");
+    try {
+      const result = await reassignClientBranch(repairClient.id, repairBranchId);
+      await refreshDashboard();
+      setNotice({ title: `${result.client.name} was moved to ${targetBranch.name}`, detail: `${result.updatedVisitCount} unassigned visit${result.updatedVisitCount === 1 ? "" : "s"} updated. Future check-ins will use this branch.` });
+      setRepairClient(result.client);
+      setRepairPhone("");
+    } catch (error) {
+      setRepairError(error instanceof Error ? error.message : "Could not repair this client’s branch.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -253,7 +296,7 @@ export default function Home({ onLogout }: HomeProps) {
           <div className="brand-mark"><Sparkles size={18} strokeWidth={2.5} /></div>
           <div><div className="brand-name">guestflow</div><div className="brand-caption">your welcome desk, simplified</div></div>
         </div>
-        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><Link className="client-link" href={branchId ? `/welcome?branchId=${encodeURIComponent(branchId)}` : "/welcome"}>Client screen ↗</Link><button className="logout-button" type="button" onClick={onLogout}><LogOut size={14} /> Log out</button></div>
+        <div className="topbar-meta"><span className="live-dot" /> <span>Front desk is open</span><span className="meta-divider" /> <span>{todayLabel}</span><button className="logout-button" type="button" onClick={onLogout}><LogOut size={14} /> Log out</button></div>
       </header>
 
       <nav className="workspace-tabs container" aria-label="GuestFlow workspace sections">
@@ -272,6 +315,12 @@ export default function Home({ onLogout }: HomeProps) {
         </div>
         {branchError ? <div className="branch-error" role="alert">Could not load branch links from SpaGym. Deploy the updated SpaGym integration API and check the GuestFlow connection. ({branchError})</div> : branches.length === 0 ? <div className="branch-empty">No SpaGym branches were returned. Add branches in SpaGym, then refresh this page.</div> : <div className="branch-link-grid">{branches.map((branch) => <article className={`branch-link-card ${branch.id === branchId ? "is-selected" : ""}`} key={branch.id}><div><span className="branch-link-label">CLIENT CHECK-IN</span><h3>{branch.name}</h3><a href={branchWelcomeUrl(branch.id)} target="_blank" rel="noreferrer">Open kiosk screen <ArrowRight size={14} /></a></div><button type="button" onClick={() => copyBranchLink(branch)} aria-label={`Copy ${branch.name} client link`}><Copy size={15} /><span>Copy link</span></button></article>)}</div>}
         <p className="branch-filter-note">Showing: <strong>{activeBranchName}</strong>. New client records and visits created from a branch link are tagged to that branch.</p>
+        <div className="branch-repair" aria-labelledby="branch-repair-title">
+          <div className="branch-repair-heading"><div><span className="section-kicker">DATA REPAIR</span><h3 id="branch-repair-title">Fix an unassigned client</h3><p>Use this for a client created through the retired link. Their profile and any blank-branch visits will be moved together.</p></div></div>
+          <div className="branch-repair-form"><label><span>Client phone</span><input type="tel" inputMode="tel" placeholder="+256 7XX XXX XXX" value={repairPhone} onChange={(event) => { setRepairPhone(event.target.value); setRepairError(""); setRepairClient(null); }} onKeyDown={(event) => event.key === "Enter" && findRepairClient()} /></label><button type="button" className="secondary-action" onClick={findRepairClient} disabled={isSubmitting}>Find client</button></div>
+          {repairClient && <div className="branch-repair-result"><div><strong>{repairClient.name}</strong><span>{repairClient.phoneNumber || repairClient.phone} · Current branch: {repairClient.branch || "Unassigned"}</span></div><div className="branch-repair-actions"><label><span>Move to</span><select value={repairBranchId} onChange={(event) => setRepairBranchId(event.target.value)}><option value="">Choose a branch</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label><button type="button" className="primary-action" onClick={repairBranch} disabled={isSubmitting || !repairBranchId}>Repair branch</button></div></div>}
+          {repairError && <div className="branch-repair-error" role="alert">{repairError}</div>}
+        </div>
       </section>}
 
       <section className="workspace container">

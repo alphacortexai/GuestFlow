@@ -80,6 +80,13 @@ export async function createClient(input: { name: string; phone: string; day: st
   }, admin);
 }
 
+export async function reassignClientBranch(clientId: string, branchId: string) {
+  return request<{ client: SpaGymClient; updatedVisitCount: number }>('/clients/reassign', {
+    method: 'POST',
+    body: JSON.stringify({ clientId, branchId }),
+  }, true);
+}
+
 export async function checkIn(phone: string, clientId?: string, admin = false, branchId?: string) {
   return request<{ client: SpaGymClient; visit: SpaGymVisit; alreadyCheckedIn: boolean }>('/check-ins', {
     method: 'POST',

@@ -257,8 +257,29 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
 .branch-filter-note strong { color: #615b56; }
 .branch-error, .branch-empty { padding: 13px; border-radius: 10px; color: #8c6843; background: #fff9f0; font-size: 11px; line-height: 1.5; }
 .branch-error { border: 1px solid #efdfc9; }
+.branch-repair { margin-top: 18px; padding: 17px; border: 1px solid #eadfd5; border-radius: 14px; background: #fffdfa; }
+.branch-repair-heading h3 { margin: 5px 0 4px; color: var(--ink); font-size: 16px; }
+.branch-repair-heading p { margin: 0; color: #8a837d; font-size: 11px; line-height: 1.5; }
+.branch-repair-form, .branch-repair-result, .branch-repair-actions { display: flex; align-items: end; gap: 10px; }
+.branch-repair-form { margin-top: 14px; }
+.branch-repair-form label, .branch-repair-actions label { display: grid; gap: 6px; flex: 1; color: #817a74; font-size: 10px; font-weight: 700; }
+.branch-repair-form input, .branch-repair-actions select { width: 100%; height: 38px; padding: 0 11px; border: 1px solid #eadfd5; border-radius: 9px; outline: 0; background: white; color: #393735; font-size: 12px; }
+.branch-repair-form input:focus, .branch-repair-actions select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(255,90,10,.1); }
+.secondary-action, .primary-action { height: 38px; padding: 0 13px; border-radius: 9px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.secondary-action { border: 1px solid #eadfd5; background: #fff; color: #5d5854; }
+.secondary-action:hover { border-color: #e6bd99; background: #fff4e9; }
+.primary-action { border: 0; background: var(--coral); color: #fff; }
+.primary-action:hover { background: var(--coral-dark); }
+.secondary-action:disabled, .primary-action:disabled { cursor: wait; opacity: .62; }
+.branch-repair-result { justify-content: space-between; margin-top: 12px; padding: 12px; border: 1px solid #efe4da; border-radius: 10px; background: #fff; }
+.branch-repair-result > div:first-child { min-width: 0; }
+.branch-repair-result strong, .branch-repair-result span { display: block; }
+.branch-repair-result strong { color: #39312d; font-size: 12px; }
+.branch-repair-result span { margin-top: 3px; color: #8a837d; font-size: 10px; }
+.branch-repair-actions { flex: 0 0 270px; }
+.branch-repair-error { margin-top: 10px; padding: 9px 11px; border: 1px solid #edc1b0; border-radius: 9px; background: #fff1eb; color: #9b3e22; font-size: 11px; line-height: 1.4; }
 .client-branch-name { margin-left: 6px; padding: 5px 8px; border: 1px solid #f1dfd2; border-radius: 999px; color: #77716b; background: rgba(255,255,255,.76); font-size: 9px; font-weight: 600; letter-spacing: 0; }
-@media (max-width: 650px) { .branch-admin { padding: 17px; }.branch-admin-heading { align-items: stretch; flex-direction: column; }.branch-filter, .branch-filter select { width: 100%; }.branch-link-grid { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .branch-admin { padding: 17px; }.branch-admin-heading { align-items: stretch; flex-direction: column; }.branch-filter, .branch-filter select { width: 100%; }.branch-link-grid { grid-template-columns: 1fr; }.branch-repair-form, .branch-repair-result, .branch-repair-actions { align-items: stretch; flex-direction: column; }.branch-repair-actions { flex-basis: auto; width: 100%; } }
 .activity-row { gap: 12px; }
 .checkout-button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #f1c4ad; border-radius: 999px; background: #fff7f0; color: #c65020; font: inherit; font-size: 11px; font-weight: 700; padding: 8px 11px; white-space: nowrap; transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease; }
 .checkout-button:hover { background: #ffeadc; border-color: #ffad82; color: #e94700; transform: translateY(-1px); }
