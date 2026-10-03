@@ -19,5 +19,7 @@ export async function getDeviceStatus(branchId = "") {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "Could not register this device.");
-  return (payload.status ? payload : payload.device) as { status: "pending" | "approved" | "revoked"; branchName?: string };
+  const result = payload.status ? payload : payload.device;
+  if (!result?.status) throw new Error(payload.error || "The device approval service returned an incomplete response. Please try again.");
+  return result as { status: "pending" | "approved" | "revoked"; branchName?: string };
 }

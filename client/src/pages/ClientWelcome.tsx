@@ -52,7 +52,7 @@ export default function ClientWelcome() {
   useEffect(() => {
     let active = true;
     const checkDevice = () => getDeviceStatus(branchId)
-      .then((result) => { if (active) { setDeviceStatus(result.status); setDeviceError(""); } })
+      .then((result) => { if (active) { setDeviceStatus(result?.status || "error"); setDeviceError(result?.status ? "" : "The device approval service returned an incomplete response. Please try again."); } })
       .catch((error) => { if (active) { setDeviceStatus("error"); setDeviceError(error instanceof Error ? error.message : "Could not register this device."); } });
     checkDevice();
     const timer = window.setInterval(() => { if (active) checkDevice(); }, 5000);
