@@ -51,11 +51,12 @@ export default function ClientWelcome() {
 
   useEffect(() => {
     let active = true;
+    let timer: number | undefined;
     const checkDevice = () => getDeviceStatus(branchId)
-      .then((result) => { if (active) { setDeviceStatus(result?.status || "error"); setDeviceError(result?.status ? "" : "The device approval service returned an incomplete response. Please try again."); } })
+      .then((result) => { if (active) { setDeviceStatus(result?.status || "error"); setDeviceError(result?.status ? "" : "The device approval service returned an incomplete response. Please try again."); if (result?.status === "approved" && timer) window.clearInterval(timer); } })
       .catch((error) => { if (active) { setDeviceStatus("error"); setDeviceError(error instanceof Error ? error.message : "Could not register this device."); } });
     checkDevice();
-    const timer = window.setInterval(() => { if (active) checkDevice(); }, 5000);
+    timer = window.setInterval(() => { if (active) checkDevice(); }, 5000);
     return () => { active = false; window.clearInterval(timer); };
   }, [branchId]);
 
@@ -142,8 +143,8 @@ export default function ClientWelcome() {
       <section className="client-card device-gate-card">
         <div className="success-mark">{deviceStatus === "loading" ? <span className="device-spinner" /> : <UserPlus size={28} />}</div>
         <span className="client-eyebrow">DEVICE ACCESS</span>
-        <h1>{deviceStatus === "revoked" ? <>This device is<br /><em>revoked.</em></> : <>Waiting for<br /><em>approval.</em></>}</h1>
-        <p>{deviceStatus === "loading" ? "Registering this device securely…" : deviceStatus === "error" ? deviceError : deviceStatus === "revoked" ? "Ask the top administrator to approve this device again." : "This check-in device has been sent to the top administrator. You can use this screen once it is approved."}</p>
+        <h1>{deviceStatus === "loading" ? <>Securing this<br /><em>device.</em></> : deviceStatus === "revoked" ? <>This device is<br /><em>revoked.</em></> : <>Waiting for<br /><em>approval.</em></>}</h1>
+        <p>{deviceStatus === "loading" ? "Checking this device’s GuestFlow access…" : deviceStatus === "error" ? deviceError : deviceStatus === "revoked" ? "Ask the top administrator to approve this device again." : "This check-in device has been sent to the top administrator. You can use this screen once it is approved."}</p>
         {deviceStatus === "pending" && <div className="device-pending-note">This page will update automatically after approval.</div>}
       </section>
       <div className="client-footer">Secure device access · GuestFlow</div>
