@@ -202,6 +202,7 @@ export function createApp() {
     const installationId = String(req.body?.installationId || "").trim();
     if (installationId.length < 20 || installationId.length > 200) { res.status(400).json({ error: "Invalid device identifier." }); return; }
     req.body = { ...req.body, deviceIdHash: deviceHash(installationId), userAgent: String(req.headers["user-agent"] || "") };
+    req.method = "POST";
     await spaGymProxy(req, res, "devices");
   }
 
