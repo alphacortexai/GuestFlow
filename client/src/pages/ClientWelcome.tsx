@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Sparkles, UserPlus } from "lucide-react";
 import { checkIn as apiCheckIn, createClient as apiCreateClient, getBranches, SpaGymApiError } from "@/lib/spaGymApi";
+import { getDeviceStatus } from "@/lib/device";
 import { isValidPhone } from "@/lib/phone";
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const weekdayNames = ["S", "M", "T", "W", "T", "F", "S"];
@@ -27,6 +28,8 @@ export default function ClientWelcome() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [profileSaved, setProfileSaved] = useState(false);
+  const [deviceStatus, setDeviceStatus] = useState<"loading" | "pending" | "approved" | "revoked" | "error">("loading");
+  const [deviceError, setDeviceError] = useState("");
   const clientGreeting = getClientGreeting();
 
   const currentYear = new Date().getFullYear();
@@ -44,6 +47,16 @@ export default function ClientWelcome() {
     getBranches()
       .then((items) => setBranchName(items.find((branch) => branch.id === branchId)?.name || ""))
       .catch(() => setBranchName(""));
+  }, [branchId]);
+
+  useEffect(() => {
+    let active = true;
+    const checkDevice = () => getDeviceStatus(branchId)
+      .then((result) => { if (active) { setDeviceStatus(result.status); setDeviceError(""); } })
+      .catch((error) => { if (active) { setDeviceStatus("error"); setDeviceError(error instanceof Error ? error.message : "Could not register this device."); } });
+    checkDevice();
+    const timer = window.setInterval(() => { if (active) checkDevice(); }, 5000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [branchId]);
 
   useEffect(() => {
@@ -121,6 +134,21 @@ export default function ClientWelcome() {
     else if (registerStep === 2 && registration.day && registration.month) setRegisterStep(3);
     else if (registerStep === 3) register(event);
   };
+
+  if (deviceStatus !== "approved") return (
+    <main className="client-screen device-gate-screen">
+      <div className="client-orb client-orb-one" /><div className="client-orb client-orb-two" />
+      <div className="client-brand"><span className="brand-mark"><Sparkles size={16} /></span><span>guestflow</span></div>
+      <section className="client-card device-gate-card">
+        <div className="success-mark">{deviceStatus === "loading" ? <span className="device-spinner" /> : <UserPlus size={28} />}</div>
+        <span className="client-eyebrow">DEVICE ACCESS</span>
+        <h1>{deviceStatus === "revoked" ? <>This device is<br /><em>revoked.</em></> : <>Waiting for<br /><em>approval.</em></>}</h1>
+        <p>{deviceStatus === "loading" ? "Registering this device securely…" : deviceStatus === "error" ? deviceError : deviceStatus === "revoked" ? "Ask the top administrator to approve this device again." : "This check-in device has been sent to the top administrator. You can use this screen once it is approved."}</p>
+        {deviceStatus === "pending" && <div className="device-pending-note">This page will update automatically after approval.</div>}
+      </section>
+      <div className="client-footer">Secure device access · GuestFlow</div>
+    </main>
+  );
 
   return (
     <main className="client-screen">

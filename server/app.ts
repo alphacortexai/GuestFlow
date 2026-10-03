@@ -1,6 +1,6 @@
 import express from "express";
 import type { NextFunction, Request, Response } from "express";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -10,6 +10,7 @@ const proxyWindowMs = 60_000;
 const proxyLimit = 90;
 const proxyHits = new Map<string, { count: number; resetAt: number }>();
 const adminCookieName = "guestflow_admin_session";
+const deviceCookieName = "guestflow_device_credential";
 const adminSessionTtlSeconds = 8 * 60 * 60;
 
 function adminSecret() {
@@ -40,6 +41,18 @@ function hasAdminSession(req: Request) {
 function setAdminCookie(res: Response, value: string, maxAge: number) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   res.setHeader("Set-Cookie", `${adminCookieName}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${secure}`);
+}
+
+function deviceSecret() { return process.env.DEVICE_CREDENTIAL_SECRET?.trim() || adminSecret(); }
+function deviceHash(value: string) { return createHash("sha256").update(value).digest("hex"); }
+function readCookie(req: Request, name: string) {
+  const part = (req.headers.cookie || "").split(";").map((item) => item.trim()).find((item) => item.startsWith(`${name}=`));
+  return part ? part.slice(name.length + 1) : "";
+}
+function signDeviceCredential(payload: string) { return createHmac("sha256", deviceSecret()).update(payload).digest("hex"); }
+function setDeviceCookie(res: Response, value: string, maxAge = 365 * 24 * 60 * 60) {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  res.setHeader("Set-Cookie", `${deviceCookieName}=${value}; Max-Age=${maxAge}; Path=/; HttpOnly${secure}; SameSite=Strict`);
 }
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
@@ -154,13 +167,73 @@ export function createApp() {
     }
   }
 
-  // These endpoints are deliberately narrow: the browser never receives the SpaGym API secret.
-  function adminHeaderIfPresent(req: Request, res: Response, next: NextFunction) {
-    if (req.headers["x-guestflow-admin"] === "1") return requireAdmin(req, res, next);
+  async function getDeviceRecord(hash: string, id = "") {
+    const origin = process.env.SPAGYM_API_URL?.trim().replace(/\/+$/, "");
+    const apiKey = process.env.SPAGYM_API_KEY;
+    if (!origin || !apiKey) return null;
+    const url = new URL(`${origin}/api/integrations/guestflow/devices/verify`);
+    if (hash) url.searchParams.set("deviceIdHash", hash);
+    if (id) url.searchParams.set("id", id);
+    try {
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+      if (!response.ok) return null;
+      return ((await response.json()) as { device?: { id?: string; status?: string; branchName?: string } }).device || null;
+    } catch { return null; }
+  }
+
+  async function requireApprovedDevice(req: Request, res: Response, next: NextFunction) {
+    const installationId = String(req.headers["x-guestflow-device-id"] || "").trim();
+    const [recordId, issuedAt, signature] = readCookie(req, deviceCookieName).split(".");
+    const payload = recordId && issuedAt ? `${recordId}.${issuedAt}` : "";
+    const expected = payload ? signDeviceCredential(payload) : "";
+    const validSignature = Boolean(signature && expected && signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected)));
+    if (!installationId || !validSignature || Date.now() / 1000 - Number(issuedAt) > 365 * 24 * 60 * 60) {
+      res.status(403).json({ error: "This device is not approved. Ask the administrator to approve it." }); return;
+    }
+    const device = await getDeviceRecord(deviceHash(installationId), recordId);
+    if (!device || device.status !== "approved" || device.id !== recordId) {
+      setDeviceCookie(res, "", 0);
+      res.status(403).json({ error: "This device is not approved. Ask the administrator to approve it." }); return;
+    }
     next();
   }
 
-  app.get("/api/spagym/branches", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "branches"));
+  async function requestDevice(req: Request, res: Response) {
+    const installationId = String(req.body?.installationId || "").trim();
+    if (installationId.length < 20 || installationId.length > 200) { res.status(400).json({ error: "Invalid device identifier." }); return; }
+    req.body = { ...req.body, deviceIdHash: deviceHash(installationId), userAgent: String(req.headers["user-agent"] || "") };
+    await spaGymProxy(req, res, "devices");
+  }
+
+  // These endpoints are deliberately narrow: the browser never receives the SpaGym API secret.
+  function adminHeaderIfPresent(req: Request, res: Response, next: NextFunction) {
+    if (req.headers["x-guestflow-admin"] === "1") return requireAdmin(req, res, next);
+    return requireApprovedDevice(req, res, next);
+  }
+
+  app.post("/api/device/request", limitIntegrationTraffic, requestDevice);
+  app.get("/api/device/status", limitIntegrationTraffic, async (req: Request, res: Response) => {
+    const installationId = String(req.headers["x-guestflow-device-id"] || "").trim();
+    if (installationId.length < 20 || installationId.length > 200) { res.status(400).json({ error: "Invalid device identifier." }); return; }
+    let device = await getDeviceRecord(deviceHash(installationId));
+    if (!device) {
+      req.body = { installationId, branchId: typeof req.query.branchId === "string" ? req.query.branchId : "" };
+      await requestDevice(req, res); return;
+    }
+    if (device.status === "approved" && device.id) {
+      const issuedAt = String(Math.floor(Date.now() / 1000));
+      setDeviceCookie(res, `${device.id}.${issuedAt}.${signDeviceCredential(`${device.id}.${issuedAt}`)}`);
+    } else if (device.status === "revoked") setDeviceCookie(res, "", 0);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ status: device.status, branchName: device.branchName || "", deviceId: device.id });
+  });
+  app.get("/api/devices", requireAdmin, (req: Request, res: Response) => spaGymProxy(req, res, "devices"));
+  app.post("/api/devices/:deviceId/:action", requireAdmin, (req: Request, res: Response) => {
+    req.body = { actor: "GuestFlow top administrator" };
+    return spaGymProxy(req, res, `devices/${encodeURIComponent(req.params.deviceId)}/${req.params.action}`);
+  });
+
+  app.get("/api/spagym/branches", limitIntegrationTraffic, (req: Request, res: Response) => spaGymProxy(req, res, "branches"));
   app.get("/api/spagym/clients/lookup", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "clients/lookup"));
   app.post("/api/spagym/clients", limitIntegrationTraffic, adminHeaderIfPresent, (req: Request, res: Response) => spaGymProxy(req, res, "clients"));
   app.post("/api/spagym/clients/reassign", limitIntegrationTraffic, requireAdmin, (req: Request, res: Response) => spaGymProxy(req, res, "clients/reassign"));

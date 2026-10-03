@@ -1,3 +1,5 @@
+import { getDeviceInstallationId } from "./device";
+
 export type SpaGymClient = {
   id: string;
   name: string;
@@ -49,7 +51,7 @@ async function request<T>(path: string, init?: RequestInit, admin = false): Prom
   try {
     response = await fetch(`/api/spagym${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...(admin ? { 'X-GuestFlow-Admin': '1' } : {}), ...init?.headers },
+      headers: { 'Content-Type': 'application/json', 'X-GuestFlow-Device-Id': getDeviceInstallationId(), ...(admin ? { 'X-GuestFlow-Admin': '1' } : {}), ...init?.headers },
       cache: 'no-store',
     });
   } catch {

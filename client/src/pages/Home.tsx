@@ -7,6 +7,7 @@ import {
   Copy,
   Clock3,
   LogOut,
+  MonitorSmartphone,
   Search,
   Sparkles,
   UserPlus,
@@ -27,6 +28,7 @@ type Client = {
 };
 
 type Visit = SpaGymVisit;
+type GuestFlowDevice = { id: string; branchName: string; label: string; userAgent: string; status: "pending" | "approved" | "revoked"; requestedAt: string | null; lastSeenAt: string | null };
 
 const monthOptions = [
   "January",
@@ -75,6 +77,8 @@ export default function Home({ onLogout }: HomeProps) {
   const [repairClient, setRepairClient] = useState<SpaGymClient | null>(null);
   const [repairError, setRepairError] = useState("");
   const [repairBranchId, setRepairBranchId] = useState("");
+  const [devices, setDevices] = useState<GuestFlowDevice[]>([]);
+  const [deviceError, setDeviceError] = useState("");
   const activeBranchName = branches.find((branch) => branch.id === branchId)?.name || "All branches";
 
   const isVisible = usePageVisibility();
@@ -117,6 +121,26 @@ export default function Home({ onLogout }: HomeProps) {
     const timer = window.setTimeout(() => setNotice(null), 4200);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  const loadDevices = useCallback(async () => {
+    try {
+      const response = await fetch("/api/devices", { headers: { "X-GuestFlow-Admin": "1" }, credentials: "same-origin", cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not load devices.");
+      setDevices(payload.devices || []); setDeviceError("");
+    } catch (error) { setDeviceError(error instanceof Error ? error.message : "Could not load devices."); }
+  }, []);
+
+  useEffect(() => { if (activeWorkspaceTab === "branches") loadDevices(); }, [activeWorkspaceTab, loadDevices]);
+
+  const updateDevice = async (device: GuestFlowDevice, action: "approve" | "revoke") => {
+    try {
+      const response = await fetch(`/api/devices/${encodeURIComponent(device.id)}/${action}`, { method: "POST", headers: { "X-GuestFlow-Admin": "1", "Content-Type": "application/json" }, credentials: "same-origin" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not update device.");
+      await loadDevices();
+    } catch (error) { setDeviceError(error instanceof Error ? error.message : "Could not update device."); }
+  };
 
   const activity = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -320,6 +344,11 @@ export default function Home({ onLogout }: HomeProps) {
           <div className="branch-repair-form"><label><span>Client phone</span><input type="tel" inputMode="tel" placeholder="+256 7XX XXX XXX" value={repairPhone} onChange={(event) => { setRepairPhone(event.target.value); setRepairError(""); setRepairClient(null); }} onKeyDown={(event) => event.key === "Enter" && findRepairClient()} /></label><button type="button" className="secondary-action" onClick={findRepairClient} disabled={isSubmitting}>Find client</button></div>
           {repairClient && <div className="branch-repair-result"><div><strong>{repairClient.name}</strong><span>{repairClient.phoneNumber || repairClient.phone} · Current branch: {repairClient.branch || "Unassigned"}</span></div><div className="branch-repair-actions"><label><span>Move to</span><select value={repairBranchId} onChange={(event) => setRepairBranchId(event.target.value)}><option value="">Choose a branch</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label><button type="button" className="primary-action" onClick={repairBranch} disabled={isSubmitting || !repairBranchId}>Repair branch</button></div></div>}
           {repairError && <div className="branch-repair-error" role="alert">{repairError}</div>}
+        </div>
+        <div className="device-admin" aria-labelledby="device-admin-title">
+          <div className="branch-repair-heading"><div><span className="section-kicker">DEVICE ACCESS</span><h3 id="device-admin-title">Approved check-in devices</h3><p>New phones and tablets wait here until the top administrator approves them. Revoking a device immediately blocks its saved credential.</p></div><button type="button" className="secondary-action" onClick={loadDevices}><MonitorSmartphone size={15} /> Refresh</button></div>
+          {deviceError && <div className="branch-repair-error" role="alert">{deviceError}</div>}
+          <div className="device-list">{devices.length === 0 ? <div className="device-empty">No device requests yet.</div> : devices.map((device) => <article className="device-row" key={device.id}><div className="device-icon"><MonitorSmartphone size={18} /></div><div className="device-copy"><strong>{device.branchName || "All branches"}</strong><span>{device.label} · {device.userAgent || "Unknown browser"}</span><small>Requested {device.requestedAt ? new Date(device.requestedAt).toLocaleString() : "—"}</small></div><span className={`device-status ${device.status}`}>{device.status}</span><div className="device-actions">{device.status !== "approved" && <button type="button" className="primary-action" onClick={() => updateDevice(device, "approve")}>Approve</button>}{device.status === "approved" && <button type="button" className="secondary-action" onClick={() => updateDevice(device, "revoke")}>Revoke</button>}</div></article>)}</div>
         </div>
       </section>}
 
