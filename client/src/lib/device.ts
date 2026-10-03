@@ -19,7 +19,13 @@ export async function getDeviceStatus(branchId = "") {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "Could not register this device.");
-  const result = payload.status ? payload : payload.device;
-  if (!result?.status) throw new Error(payload.error || "The device approval service returned an incomplete response. Please try again.");
+  const result = payload.status ? payload : payload.device || payload.data?.device || payload.data;
+  if (!result?.status) {
+    if (payload.error) throw new Error(payload.error);
+    // A newly-created request can briefly return without the serialized record
+    // while the integration finishes its write. Keep polling instead of taking
+    // down the kiosk screen.
+    return { status: "pending" };
+  }
   return result as { status: "pending" | "approved" | "revoked"; branchName?: string };
 }
