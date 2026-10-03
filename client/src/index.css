@@ -505,3 +505,12 @@ body, html, .app-shell { background: var(--paper); color: var(--ink); }
   .client-greeting { font-size: 15px; }
   .client-location { font-size: 22px; }
 }
+.client-success-birthday { text-align: center; }
+.birthday-confetti { display: block; width: 132px; height: 132px; margin: -18px auto -7px; object-fit: contain; }
+.client-success-birthday .success-mark { margin: 0 auto 14px; background: #fff0d2; color: #a86b1f; }
+.client-success-birthday .client-eyebrow { color: #a86b1f; }
+.client-success-birthday h1 { margin-top: 12px; font-size: clamp(30px, 8vw, 42px); line-height: 1.08; }
+.client-success-birthday h1 em { color: #a86b1f; }
+.client-success-birthday p { margin: 16px auto 0; }
+@media (max-width: 470px) { .birthday-confetti { width: 112px; height: 112px; margin-top: -12px; } }
+@media (prefers-reduced-motion: reduce) { .birthday-confetti { display: none; } }

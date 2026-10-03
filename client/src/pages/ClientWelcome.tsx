@@ -11,6 +11,8 @@ const getClientGreeting = (date = new Date()) => {
   if (hour < 18) return "Good afternoon";
   return "Good evening";
 };
+const isBirthdayToday = (birthMonth: number | null, birthDay: number | null, date = new Date()) =>
+  birthMonth === date.getMonth() + 1 && birthDay === date.getDate();
 export default function ClientWelcome() {
   const branchId = useMemo(() => new URLSearchParams(window.location.search).get("branchId") || "", []);
   const [branchName, setBranchName] = useState("");
@@ -25,6 +27,7 @@ export default function ClientWelcome() {
   const [notFound, setNotFound] = useState(false);
   const [clientName, setClientName] = useState("");
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
+  const [isBirthday, setIsBirthday] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [profileSaved, setProfileSaved] = useState(false);
@@ -53,7 +56,7 @@ export default function ClientWelcome() {
     let active = true;
     let timer: number | undefined;
     const checkDevice = () => getDeviceStatus(branchId)
-      .then((result) => { if (active) { setDeviceStatus(result?.status || "error"); setDeviceError(result?.status ? "" : "The device approval service returned an incomplete response. Please try again."); if (result?.status === "approved" && timer) window.clearInterval(timer); } })
+      .then((result) => { if (active) { const status = result?.status; const nextStatus = status === "pending" || status === "approved" || status === "revoked" ? status : "error"; setDeviceStatus(nextStatus); setDeviceError(nextStatus === "error" ? "The device approval service returned an incomplete response. Please try again." : ""); if (nextStatus === "approved" && timer) window.clearInterval(timer); } })
       .catch((error) => { if (active) { setDeviceStatus("error"); setDeviceError(error instanceof Error ? error.message : "Could not register this device."); } });
     checkDevice();
     timer = window.setInterval(() => { if (active) checkDevice(); }, 5000);
@@ -73,6 +76,7 @@ export default function ClientWelcome() {
       setMode("check-in"); setRegisterStep(1); setPhone(""); setPhoneError("");
       setRegistration({ name: "", day: "", month: "", phone: "" });
       setRegistrationPhoneError(""); setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); setRequestError(""); setProfileSaved(false);
+      setIsBirthday(false);
     }, 5000);
     return () => window.clearTimeout(timer);
   }, [mode]);
@@ -91,6 +95,7 @@ export default function ClientWelcome() {
       const result = await apiCheckIn(phone, undefined, false, branchId || undefined);
       setClientName(result.client.name);
       setAlreadyCheckedIn(result.alreadyCheckedIn);
+      setIsBirthday(isBirthdayToday(result.client.birthMonth, result.client.birthDay));
       setNotFound(false);
       setMode("success");
     } catch (error) {
@@ -119,6 +124,7 @@ export default function ClientWelcome() {
       const signIn = await apiCheckIn(registration.phone, result.client.id, false, branchId || undefined);
       setClientName(signIn.client.name || result.client.name);
       setAlreadyCheckedIn(signIn.alreadyCheckedIn);
+      setIsBirthday(isBirthdayToday(signIn.client.birthMonth, signIn.client.birthDay));
       setNotFound(false);
       setMode("success");
     } catch (error) {
@@ -132,7 +138,7 @@ export default function ClientWelcome() {
     }
   };
 
-  const reset = () => { setMode("check-in"); setRegisterStep(1); setPhone(""); setPhoneError(""); setRegistration({ name: "", day: "", month: "", phone: "" }); setRegistrationPhoneError(""); setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); setProfileSaved(false); };
+  const reset = () => { setMode("check-in"); setRegisterStep(1); setPhone(""); setPhoneError(""); setRegistration({ name: "", day: "", month: "", phone: "" }); setRegistrationPhoneError(""); setNotFound(false); setClientName(""); setAlreadyCheckedIn(false); setIsBirthday(false); setProfileSaved(false); };
   const goBack = () => { if (mode === "register" && registerStep > 1) setRegisterStep((step) => step - 1); else setMode("check-in"); };
   const chooseDate = (day: number) => setRegistration((current) => ({ ...current, day: String(day), month: monthNames[calendarMonth] }));
   const chooseMonth = (month: number) => { setCalendarMonth(month); setCalendarView("day"); };
@@ -165,7 +171,7 @@ export default function ClientWelcome() {
       <section className={`client-card ${mode === "register" ? "client-card-register" : ""}`}>
         {requestError && mode !== "success" && <div role="alert" className="client-not-found"><strong>{profileSaved ? "Your profile is saved" : "SpaGym couldn’t complete that step"}</strong><span>{requestError}</span></div>}
         {mode === "success" ? (
-          <div className="client-success"><div className="success-mark"><Check size={28} /></div><span className="client-eyebrow">{alreadyCheckedIn ? "ALREADY CHECKED IN" : "YOU’RE ALL SET"}</span><h1>{alreadyCheckedIn ? <>You’re already<br /><em>checked in.</em></> : <>Welcome, <em>{clientName.split(" ")[0]}.</em></>}</h1><p>{alreadyCheckedIn ? "This visit was already recorded today. Please take a seat and we’ll be with you shortly." : "Your visit has been recorded. Please take a seat and we’ll be with you shortly."}</p></div>
+          <div className={`client-success ${isBirthday ? "client-success-birthday" : ""}`}>{isBirthday && <img className="birthday-confetti" src="/confetti.gif" alt="" aria-hidden="true" />}<div className="success-mark"><Check size={28} /></div><span className="client-eyebrow">{isBirthday ? "HAPPY BIRTHDAY" : alreadyCheckedIn ? "ALREADY CHECKED IN" : "YOU’RE ALL SET"}</span><h1>{isBirthday ? <>Happy Birthday,<br /><em>{clientName}!</em></> : alreadyCheckedIn ? <>You’re already<br /><em>checked in.</em></> : <>Welcome, <em>{clientName.split(" ")[0]}.</em></>}</h1><p>{isBirthday ? alreadyCheckedIn ? "Your visit was already recorded today. Enjoy your special day!" : "Your visit has been recorded. Enjoy your special day!" : alreadyCheckedIn ? "This visit was already recorded today. Please take a seat and we’ll be with you shortly." : "Your visit has been recorded. Please take a seat and we’ll be with you shortly."}</p></div>
         ) : mode === "check-in" ? (
           <div className="client-flow-step"><div className="client-welcome-copy"><span className="client-greeting">{clientGreeting}</span><span className="client-location">Welcome to <strong>{branchName || "GuestFlow"}</strong></span></div><h1>Digital<br /><em>Registration Book</em></h1><p className="client-intro">Please enter your phone number below so we know you’re here.</p><form onSubmit={checkIn} className="client-form"><label htmlFor="client-phone">Phone number</label><input id="client-phone" type="tel" inputMode="tel" autoComplete="tel" autoFocus pattern="(?:\+|00)?[\d\s().-]{7,}" aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? "client-phone-error" : undefined} placeholder="+256 7XX XXX XXX or your local number" value={phone} onChange={(event) => { setPhone(event.target.value); setPhoneError(""); setNotFound(false); setRequestError(""); }} /><button className="client-primary-button" type="submit" disabled={isSubmitting}><span>{isSubmitting ? "Checking in…" : "Please check in"}</span><ArrowRight size={17} /></button>{phoneError && <p id="client-phone-error" className="phone-validation" role="alert">{phoneError}</p>}</form>{notFound && <div className="client-not-found not-found-card"><button className="client-register-button" type="button" onClick={() => { setRegistration((current) => ({ ...current, phone })); setMode("register"); setRegisterStep(1); setRequestError(""); }}><span>Phone No. not found! Register Here.</span><ArrowRight size={17} /></button></div>}</div>
         ) : (
