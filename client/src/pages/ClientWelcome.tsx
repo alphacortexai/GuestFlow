@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Sparkles, UserPlus } from "lucide-react";
 import { checkIn as apiCheckIn, createClient as apiCreateClient, getBranches, SpaGymApiError } from "@/lib/spaGymApi";
-import { getDeviceStatus } from "@/lib/device";
+import { getDeviceStatus, sendDeviceHeartbeat } from "@/lib/device";
 import { isValidPhone } from "@/lib/phone";
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const weekdayNames = ["S", "M", "T", "W", "T", "F", "S"];
@@ -59,6 +59,13 @@ export default function ClientWelcome() {
     timer = window.setInterval(() => { if (active) checkDevice(); }, 5000);
     return () => { active = false; window.clearInterval(timer); };
   }, [branchId]);
+
+  useEffect(() => {
+    if (deviceStatus !== "approved") return undefined;
+    sendDeviceHeartbeat().catch(() => {});
+    const timer = window.setInterval(() => { sendDeviceHeartbeat().catch(() => {}); }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [deviceStatus]);
 
   useEffect(() => {
     if (mode !== "success") return;

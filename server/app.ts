@@ -228,6 +228,11 @@ export function createApp() {
     res.setHeader("Cache-Control", "no-store");
     res.json({ status: device.status, branchName: device.branchName || "", deviceId: device.id });
   });
+  app.post("/api/device/heartbeat", limitIntegrationTraffic, requireApprovedDevice, async (req: Request, res: Response) => {
+    const installationId = String(req.headers["x-guestflow-device-id"] || "").trim();
+    req.body = { deviceIdHash: deviceHash(installationId) };
+    await spaGymProxy(req, res, "devices/heartbeat");
+  });
   app.get("/api/devices", requireAdmin, (req: Request, res: Response) => spaGymProxy(req, res, "devices"));
   app.post("/api/devices/:deviceId/:action", requireAdmin, (req: Request, res: Response) => {
     req.body = { actor: "GuestFlow top administrator" };

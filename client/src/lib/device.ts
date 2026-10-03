@@ -29,3 +29,13 @@ export async function getDeviceStatus(branchId = "") {
   }
   return result as { status: "pending" | "approved" | "revoked"; branchName?: string };
 }
+
+export async function sendDeviceHeartbeat() {
+  const response = await fetch("/api/device/heartbeat", {
+    method: "POST",
+    headers: { "X-GuestFlow-Device-Id": getDeviceInstallationId() },
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("Device heartbeat failed.");
+}
