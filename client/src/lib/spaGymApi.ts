@@ -1,5 +1,9 @@
 import { getDeviceInstallationId } from "./device";
 
+const BRANCH_CACHE_TTL_MS = 5 * 60 * 1000;
+const branchCache = new Map<string, { expiresAt: number; branches: SpaGymBranch[] }>();
+const branchRequests = new Map<string, Promise<SpaGymBranch[]>>();
+
 export type SpaGymClient = {
   id: string;
   name: string;
@@ -71,8 +75,19 @@ export async function lookupClient(phone: string, admin = false) {
 }
 
 export async function getBranches(admin = false) {
-  const result = await request<{ branches: SpaGymBranch[] }>('/branches', undefined, admin);
-  return result.branches;
+  const cacheKey = admin ? "admin" : "device";
+  const cached = branchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.branches;
+  const pending = branchRequests.get(cacheKey);
+  if (pending) return pending;
+  const requestPromise = request<{ branches: SpaGymBranch[] }>('/branches', undefined, admin)
+    .then((result) => {
+      branchCache.set(cacheKey, { branches: result.branches, expiresAt: Date.now() + BRANCH_CACHE_TTL_MS });
+      return result.branches;
+    })
+    .finally(() => branchRequests.delete(cacheKey));
+  branchRequests.set(cacheKey, requestPromise);
+  return requestPromise;
 }
 
 export async function createClient(input: { name: string; phone: string; day: string; month: string; branchId?: string }, admin = false) {

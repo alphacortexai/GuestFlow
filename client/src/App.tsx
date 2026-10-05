@@ -1,13 +1,18 @@
 import React from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import ClientWelcome from "./pages/ClientWelcome";
-import AdminLogin from "./pages/AdminLogin";
-import Home from "./pages/Home";
+
+const ClientWelcome = React.lazy(() => import("./pages/ClientWelcome"));
+const AdminLogin = React.lazy(() => import("./pages/AdminLogin"));
+const Home = React.lazy(() => import("./pages/Home"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+
+function RouteFallback() {
+  return <main className="admin-auth-screen"><div className="admin-auth-loading">Loading GuestFlow…</div></main>;
+}
 
 function AdminGate() {
   const [status, setStatus] = React.useState<"loading" | "login" | "authenticated">("loading");
@@ -49,7 +54,7 @@ export default function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <React.Suspense fallback={<RouteFallback />}><Router /></React.Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
