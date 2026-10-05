@@ -59,8 +59,10 @@ export default function ClientWelcome() {
       .then((result) => { if (active) { const status = result?.status; const nextStatus = status === "pending" || status === "approved" || status === "revoked" ? status : "error"; setDeviceStatus(nextStatus); setDeviceError(nextStatus === "error" ? "The device approval service returned an incomplete response. Please try again." : ""); if (nextStatus === "approved" && timer) window.clearInterval(timer); } })
       .catch((error) => { if (active) { setDeviceStatus("error"); setDeviceError(error instanceof Error ? error.message : "Could not register this device."); } });
     checkDevice();
-    timer = window.setInterval(() => { if (active) checkDevice(); }, 5000);
-    return () => { active = false; window.clearInterval(timer); };
+    timer = window.setInterval(() => { if (active && !document.hidden) checkDevice(); }, 5000);
+    const refreshOnVisible = () => { if (!document.hidden && active) checkDevice(); };
+    document.addEventListener("visibilitychange", refreshOnVisible);
+    return () => { active = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", refreshOnVisible); };
   }, [branchId]);
 
   useEffect(() => {
